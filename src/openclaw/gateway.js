@@ -3,6 +3,7 @@ const MODEL = 'deepseek-v4-pro';
 const API_KEY = 'nosistech-proxy-2026';
 const { sanitize } = require('../security/defender');
 const { execSync } = require('child_process');
+const fs = require('fs');
 
 const SYSTEM_PROMPT = `You are Korvin, a self-hosted AI agent framework built by Carlos Paredes at NosisTech LLC. You are voice-first, security-native, and privacy-focused. You help users with research, document drafting, inbox management, and security monitoring. Always respond in English regardless of the language the user speaks in. Be concise, direct, and professional. Never include system warnings or technical notices in your replies.`;
 
@@ -25,15 +26,18 @@ print(json.dumps(get_history('${chatId}', 10)))
 
 function saveMessage(chatId, role, content) {
   try {
-    const safe = content.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+    const textFile = '/tmp/korvin_mem_text.txt';
+    fs.writeFileSync(textFile, content, 'utf8');
     execSync(
       `cd /root/korvin && venv/bin/python3 -c "
 import sys; sys.path.insert(0, 'src/hermes')
 from memory import save
-save('${chatId}', '${role}', '${safe}')
+text = open('/tmp/korvin_mem_text.txt').read()
+save('${chatId}', '${role}', text)
 "`,
       { stdio: ['pipe', 'pipe', 'pipe'] }
     );
+    fs.unlinkSync(textFile);
   } catch (e) {
     console.error('Memory save error:', e.message);
   }
@@ -50,10 +54,7 @@ async function sendMessage(userMessage, chatId = 'default') {
 
   const response = await fetch(LITELLM_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
     body: JSON.stringify({ model: MODEL, messages, temperature: 0.7, stream: false })
   });
 
