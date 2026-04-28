@@ -5,3 +5,4 @@ logs/
 *.wav
 *.ogg
 /tmp/
+config.json
