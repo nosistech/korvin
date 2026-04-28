@@ -1,11 +1,12 @@
 const { execInSandboxNetwork } = require('../security/sandbox');
+const { sanitize } = require('../security/defender');
 
 async function researchTopic(topic) {
-  const query = encodeURIComponent(topic);
-  const cmd = `apk add -q lynx 2>/dev/null; lynx -dump "https://lite.duckduckgo.com/lite?q=${query}" | head -n 200`;
-  const result = await execInSandboxNetwork(cmd);
-  if (result.exitCode !== 0) throw new Error(result.stderr || 'Sandbox error');
-  return result.stdout;
+  const q = encodeURIComponent(topic);
+  const cmd = `apk add -q lynx 2>/dev/null; lynx -dump "https://lite.duckduckgo.com/lite?q=${q}" | head -n 200`;
+  const r = await execInSandboxNetwork(cmd);
+  if (r.exitCode !== 0) throw new Error(r.stderr || 'Sandbox error');
+  return sanitize(r.stdout);
 }
 
 module.exports = { researchTopic };

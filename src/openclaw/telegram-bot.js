@@ -137,8 +137,14 @@ bot.on('message', async (msg) => {
   if (!text || msg.voice) return;
   if (text.startsWith('/')) return; // handled by onText
 
-  if (text.toLowerCase().startsWith('research ')) {
-    const topic = text.substring(9).trim();
+  const sanity = sanitizeInput(text);
+  if (sanity.safe === false) {
+    await bot.sendMessage(chatId, 'Input rejected: ' + sanity.reason);
+    return;
+  }
+
+  if (sanity.value.toLowerCase().startsWith('research ')) {
+    const topic = sanity.value.substring(9).trim();
     await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
     try {
       const summary = await getResearchSummary(topic);

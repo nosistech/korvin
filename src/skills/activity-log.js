@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const LOG_FILE = '/root/korvin/docs/activity.md';
+const LOG_FILE = '/home/korvin/korvin/docs/activity.md';
 
 if (!fs.existsSync(LOG_FILE)) {
   fs.writeFileSync(LOG_FILE, '# Korvin Activity Log\n\nAuto-generated.\n\n---\n\n', 'utf8');
