@@ -1,26 +1,37 @@
 {
-  "name": "korvin",
-  "version": "1.0.0",
-  "description": "**Self-hosted AI agent framework. Voice-first. Security-native. No lock-in.**",
+  "name": "@nosistech/korvin",
+  "version": "0.1.0",
+  "description": "Self-hosted AI agent framework. Voice-first. Security-native. No lock-in.",
   "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
+  "files": [
+    "index.js",
+    "src/skills/",
+    "src/openclaw/gateway.js",
+    "docs/"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/openclaw/telegram-bot.js",
+    "test": "node -e \"const k = require('.'); console.log('Korvin skills loaded:', Object.keys(k));\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/arparvar/korvin.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "ai-agent",
+    "security",
+    "telegram-bot",
+    "voice",
+    "agentic-ai",
+    "governance",
+    "nosistech"
+  ],
+  "author": "Carlos Paredes <info@nosistech.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/arparvar/korvin/issues"
   },
-  "homepage": "https://github.com/arparvar/korvin#readme",
+  "homepage": "https://korvin.cloud",
   "dependencies": {
     "node-telegram-bot-api": "^0.67.0"
   }
