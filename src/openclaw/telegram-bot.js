@@ -27,7 +27,7 @@ function downloadFile(url, dest) {
 
 function transcribe(audioPath) {
   return execSync(
-    `cd /root/korvin && venv/bin/python3 -c "
+    `cd /home/korvin/korvin && venv/bin/python3 -c "
 import warnings, whisper
 warnings.filterwarnings('ignore')
 m = whisper.load_model('base')
@@ -44,7 +44,7 @@ function generateSpeech(text, outputPath) {
     const textFile = '/tmp/korvin_tts_input.txt';
     fs.writeFileSync(textFile, text, 'utf8');
     exec(
-      `cd /root/korvin && venv/bin/python3 -c "
+      `cd /home/korvin/korvin && venv/bin/python3 -c "
 import warnings, sys
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src/voice')
