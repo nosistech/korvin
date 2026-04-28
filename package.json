@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/arparvar/korvin.git"
+    "url": "git+https://github.com/nosistech/korvin.git"
   },
   "keywords": [
     "ai-agent",
@@ -29,7 +29,7 @@
   "author": "Carlos Paredes <info@nosistech.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/arparvar/korvin/issues"
+    "url": "https://github.com/nosistech/korvin/issues"
   },
   "homepage": "https://korvin.cloud",
   "dependencies": {
