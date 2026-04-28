@@ -20,7 +20,7 @@ async function sendMessage(userMessage) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${API_KEY}`
     },
-    body: JSON.stringify({ model: MODEL, messages, temperature: 0.7 })
+    body: JSON.stringify({ model: MODEL, messages, temperature: 0.7, stream: false })
   });
 
   if (!response.ok) throw new Error(`LiteLLM error: ${response.status} ${response.statusText}`);

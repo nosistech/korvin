@@ -1,0 +1,27 @@
+{
+  "name": "korvin",
+  "version": "1.0.0",
+  "description": "**Self-hosted AI agent framework. Voice-first. Security-native. No lock-in.**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arparvar/korvin.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arparvar/korvin/issues"
+  },
+  "homepage": "https://github.com/arparvar/korvin#readme",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.67.0"
+  }
+}
