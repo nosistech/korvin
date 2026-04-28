@@ -1,3 +1,8 @@
+// src/openclaw/telegram-bot.js
+// Korvin AI Security Agent — Phase B
+
+'use strict';
+
 const TelegramBot = require('node-telegram-bot-api');
 const { exec, execSync } = require('child_process');
 const { sendMessage } = require('./gateway');
@@ -7,13 +12,31 @@ const path = require('path');
 const https = require('https');
 const os = require('os');
 
+// ── Middleware ────────────────────────────────────────────────────────────────
+const { sanitizeInput } = require('../middleware/sanitizer');
+const { requestConfirmation, confirmAction, cancelAction, listPending } = require('../middleware/confirmation-gate');
+const { defend } = require('../security/defender');
+
+// ── Skills ────────────────────────────────────────────────────────────────────
+const { logActivity, getLogSummary } = require('../skills/activity-log');
+
+// ── Commands (Phase B) ────────────────────────────────────────────────────────
+const { registerPatch } = require('../commands/patch');
+const { registerScan } = require('../commands/scan');
+const { registerCompliance } = require('../commands/compliance');
+const { registerIncident } = require('../commands/incident');
+
+// ── Dashboard (Phase B) ───────────────────────────────────────────────────────
+const { startDashboard } = require('../dashboard-api/server');
+
+// ── Bot init ──────────────────────────────────────────────────────────────────
 const BOT_TOKEN = require('../../config.json').telegramToken;
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 const VOICE_DIR = '/tmp/korvin_voice';
 if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR);
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
@@ -38,7 +61,6 @@ print(r['text'].strip())
   ).trim();
 }
 
-// Async TTS — does not block event loop
 function generateSpeech(text, outputPath) {
   return new Promise((resolve, reject) => {
     const textFile = '/tmp/korvin_tts_input.txt';
@@ -71,33 +93,35 @@ function cleanup(...files) {
   }
 }
 
-// ── Skills ───────────────────────────────────────────────────────────────────
+// ── Research ──────────────────────────────────────────────────────────────────
 
 async function getResearchSummary(topic) {
   const rawData = await researchTopic(topic);
   const prompt = `You are Korvin. Summarise the following search results for "${topic}". Give a concise report with key points. Only use information from the search results.\n\nSEARCH RESULTS:\n${rawData}`;
-  return await sendMessage(prompt);
+  const summary = await sendMessage(prompt);
+  try { logActivity('research', topic, summary); } catch (_) {}
+  return summary;
 }
 
+// ── System Status ─────────────────────────────────────────────────────────────
+
 function getSystemStatus() {
-  // Try dashboard API first, fall back to os module
   try {
     const sys = JSON.parse(execSync('curl -s --max-time 2 http://localhost:3000/api/system').toString());
     return `🟢 *Korvin Online*\n` +
       `🧠 Model: deepseek-v4-pro\n` +
-      `💾 Disk: ${sys.disk_used} / ${sys.disk_free} (${sys.disk_pct})\n` +
-      `🧮 RAM: ${sys.mem_used_mb} MB used / ${sys.mem_total_mb} MB\n` +
-      `⏱ Uptime: ${(os.uptime()/3600).toFixed(1)}h`;
+      `💾 Disk: ${sys.disk_used} / ${sys.disk_total} (${sys.disk_pct})\n` +
+      `🧮 RAM: ${sys.mem_used_mb} MB / ${sys.mem_total_mb} MB (${sys.mem_pct}%)\n` +
+      `📊 CPU Load: ${sys.load_1m} / ${sys.load_5m} / ${sys.load_15m}\n` +
+      `⏱ Uptime: ${sys.uptime_hours}h`;
   } catch (_) {
-    // Dashboard down — use os module
     const total = os.totalmem();
     const free = os.freemem();
     const used = total - free;
     const load = os.loadavg();
     let disk = 'N/A';
     try {
-      const d = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'").toString().trim();
-      disk = d;
+      disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().trim();
     } catch (_) {}
     return `🟡 *Korvin Online* _(dashboard offline)_\n` +
       `🧮 RAM: ${(used/1024/1024).toFixed(0)} MB / ${(total/1024/1024).toFixed(0)} MB (${((used/total)*100).toFixed(1)}%)\n` +
@@ -107,13 +131,19 @@ function getSystemStatus() {
   }
 }
 
-// ── Commands ─────────────────────────────────────────────────────────────────
+// ── Command Handlers ──────────────────────────────────────────────────────────
 
 bot.onText(/\/start|\/help/, async (msg) => {
   await bot.sendMessage(msg.chat.id,
     `🛡 *Korvin — AI Security Agent*\n\n` +
     `*Commands:*\n` +
     `\`/status\` — VPS health report\n` +
+    `\`/scan [target]\` — Security scan (HIGH risk)\n` +
+    `\`/patch <target>\` — Apply patch (HIGH risk)\n` +
+    `\`/compliance <framework>\` — Compliance audit (MEDIUM risk)\n` +
+    `\`/incident <severity> <description>\` — Log incident (MEDIUM risk)\n` +
+    `\`/log\` — Recent activity\n` +
+    `\`/pending\` — Pending confirmations\n` +
     `\`/help\` — this menu\n\n` +
     `*Skills:*\n` +
     `• Type or say \`Research <topic>\` — web research + voice summary\n` +
@@ -124,18 +154,50 @@ bot.onText(/\/start|\/help/, async (msg) => {
 });
 
 bot.onText(/\/status/, async (msg) => {
-  const chatId = msg.chat.id;
   const report = getSystemStatus();
-  await bot.sendMessage(chatId, report, { parse_mode: 'Markdown' });
+  await bot.sendMessage(msg.chat.id, report, { parse_mode: 'Markdown' });
 });
 
-// ── Text handler ─────────────────────────────────────────────────────────────
+bot.onText(/\/log/, async (msg) => {
+  const summary = getLogSummary(10);
+  await bot.sendMessage(msg.chat.id, `📋 *Recent Korvin Activity*\n\n${summary}`, { parse_mode: 'Markdown' });
+});
+
+// ── Confirmation Gate Handlers ────────────────────────────────────────────────
+
+bot.onText(/\/confirm (.+)/, (msg, match) => {
+  const result = confirmAction(match[1].trim(), String(msg.from.id));
+  bot.sendMessage(msg.chat.id, result.message);
+});
+
+bot.onText(/\/cancel (.+)/, (msg, match) => {
+  const result = cancelAction(match[1].trim(), String(msg.from.id));
+  bot.sendMessage(msg.chat.id, result.message);
+});
+
+bot.onText(/\/pending/, (msg) => {
+  const pending = listPending(String(msg.chat.id));
+  if (pending.length === 0) return bot.sendMessage(msg.chat.id, 'No pending confirmations.');
+  const lines = pending.map(p => p.pendingId + ' — ' + p.action).join('\n');
+  bot.sendMessage(msg.chat.id, 'Pending:\n' + lines);
+});
+
+// ── Phase B Commands ──────────────────────────────────────────────────────────
+
+const commandDeps = { requestConfirmation, logActivity };
+
+registerPatch(bot, commandDeps);
+registerScan(bot, commandDeps);
+registerCompliance(bot, commandDeps);
+registerIncident(bot, commandDeps);
+
+// ── Text Handler ──────────────────────────────────────────────────────────────
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
   if (!text || msg.voice) return;
-  if (text.startsWith('/')) return; // handled by onText
+  if (text.startsWith('/')) return;
 
   const sanity = sanitizeInput(text);
   if (sanity.safe === false) {
@@ -163,7 +225,7 @@ bot.on('message', async (msg) => {
   }
 });
 
-// ── Voice handler ─────────────────────────────────────────────────────────────
+// ── Voice Handler ─────────────────────────────────────────────────────────────
 
 bot.on('voice', async (msg) => {
   const chatId = msg.chat.id;
@@ -211,36 +273,9 @@ bot.on('voice', async (msg) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-console.log('Korvin bot started. /help for commands.');
-// ── Phase 6: Activity Log ─────────────────────────────────────────────────────
-const { logActivity, getLogSummary } = require('../skills/activity-log');
+// ── Boot ──────────────────────────────────────────────────────────────────────
 
-bot.onText(/\/log/, async (msg) => {
-  const chatId = msg.chat.id;
-  const summary = getLogSummary(10);
-  await bot.sendMessage(chatId, `📋 *Recent Korvin Activity*\n\n${summary}`, { parse_mode: 'Markdown' });
-});
-// ── Auto-log research calls ───────────────────────────────────────────────────
-const _getResearchSummary = getResearchSummary;
-getResearchSummary = async function(topic) {
-  const summary = await _getResearchSummary(topic);
-  try { logActivity('research', topic, summary); } catch (_) {}
-  return summary;
-};
-bot.onText(/\/confirm (.+)/, (msg, match) => {
-  const result = confirmAction(match[1].trim(), String(msg.from.id));
-  bot.sendMessage(msg.chat.id, result.message);
-});
-
-bot.onText(/\/cancel (.+)/, (msg, match) => {
-  const result = cancelAction(match[1].trim(), String(msg.from.id));
-  bot.sendMessage(msg.chat.id, result.message);
-});
-
-bot.onText(/\/pending/, (msg) => {
-  const pending = listPending(String(msg.chat.id));
-  if (pending.length === 0) return bot.sendMessage(msg.chat.id, 'No pending confirmations.');
-  const lines = pending.map(p => p.pendingId + ' ' + p.action).join('\n');
-  bot.sendMessage(msg.chat.id, 'Pending:\n' + lines);
-});
+(async () => {
+  await startDashboard();
+  console.log('Korvin bot started. /help for commands.');
+})();
