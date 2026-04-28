@@ -228,3 +228,19 @@ getResearchSummary = async function(topic) {
   try { logActivity('research', topic, summary); } catch (_) {}
   return summary;
 };
+bot.onText(/\/confirm (.+)/, (msg, match) => {
+  const result = confirmAction(match[1].trim(), String(msg.from.id));
+  bot.sendMessage(msg.chat.id, result.message);
+});
+
+bot.onText(/\/cancel (.+)/, (msg, match) => {
+  const result = cancelAction(match[1].trim(), String(msg.from.id));
+  bot.sendMessage(msg.chat.id, result.message);
+});
+
+bot.onText(/\/pending/, (msg) => {
+  const pending = listPending(String(msg.chat.id));
+  if (pending.length === 0) return bot.sendMessage(msg.chat.id, 'No pending confirmations.');
+  const lines = pending.map(p => p.pendingId + ' ' + p.action).join('\n');
+  bot.sendMessage(msg.chat.id, 'Pending:\n' + lines);
+});
