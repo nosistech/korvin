@@ -2,15 +2,49 @@ const LITELLM_URL = 'http://localhost:4000/v1/chat/completions';
 const MODEL = 'deepseek-v4-pro';
 const API_KEY = 'nosistech-proxy-2026';
 const { sanitize } = require('../security/defender');
+const { execSync } = require('child_process');
 
-const SYSTEM_PROMPT = "You are Korvin, a self-hosted AI agent framework built by Carlos Paredes at NosisTech LLC. You are voice-first, security-native, and privacy-focused. You help users with research, document drafting, inbox management, and security monitoring. Always respond in the same language the user writes in. Be concise, direct, and professional.";
+const SYSTEM_PROMPT = `You are Korvin, a self-hosted AI agent framework built by Carlos Paredes at NosisTech LLC. You are voice-first, security-native, and privacy-focused. You help users with research, document drafting, inbox management, and security monitoring. Always respond in English regardless of the language the user speaks in. Be concise, direct, and professional. Never include system warnings or technical notices in your replies.`;
 
-async function sendMessage(userMessage) {
-  // Sanitize the user message before anything else
+function getHistory(chatId) {
+  try {
+    const result = execSync(
+      `cd /root/korvin && venv/bin/python3 -c "
+import sys; sys.path.insert(0, 'src/hermes')
+from memory import get_history
+import json
+print(json.dumps(get_history('${chatId}', 10)))
+"`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim();
+    return JSON.parse(result);
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveMessage(chatId, role, content) {
+  try {
+    const safe = content.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+    execSync(
+      `cd /root/korvin && venv/bin/python3 -c "
+import sys; sys.path.insert(0, 'src/hermes')
+from memory import save
+save('${chatId}', '${role}', '${safe}')
+"`,
+      { stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+  } catch (e) {
+    console.error('Memory save error:', e.message);
+  }
+}
+
+async function sendMessage(userMessage, chatId = 'default') {
   const safeMessage = sanitize(userMessage);
-
+  const history = getHistory(chatId);
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
+    ...history,
     { role: 'user', content: safeMessage }
   ];
 
@@ -25,19 +59,11 @@ async function sendMessage(userMessage) {
 
   if (!response.ok) throw new Error(`LiteLLM error: ${response.status} ${response.statusText}`);
   const data = await response.json();
-  return data.choices[0].message.content;
+  const reply = data.choices[0].message.content;
+
+  saveMessage(chatId, 'user', safeMessage);
+  saveMessage(chatId, 'assistant', reply);
+  return reply;
 }
 
 module.exports = { sendMessage };
-
-// Quick standalone test
-if (require.main === module) {
-  (async () => {
-    try {
-      const reply = await sendMessage('Hello from Korvin!');
-      console.log('AI response:', reply);
-    } catch (err) {
-      console.error('Test failed:', err.message);
-    }
-  })();
-}

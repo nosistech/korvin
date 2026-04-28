@@ -1,78 +1,48 @@
-#!/usr/bin/env python3
-"""Hermes memory layer — SQLite with full-text search."""
+import sqlite3, os, datetime
 
-import sqlite3
-import os
-from datetime import datetime
+DB_PATH = os.path.join(os.path.dirname(__file__), '../../data/memory.db')
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'memory.db')
-
-def get_db():
+def _conn():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    c = sqlite3.connect(DB_PATH)
+    c.execute('''CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        timestamp TEXT NOT NULL
+    )''')
+    c.commit()
+    return c
 
-def init_db():
-    conn = get_db()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
-            content TEXT NOT NULL
-        )
-    ''')
-    conn.execute('''
-        CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts USING fts5(
-            content,
-            content=conversations,
-            tokenize='porter unicode61'
-        )
-    ''')
-    conn.execute('''
-        CREATE TRIGGER IF NOT EXISTS conversations_ai AFTER INSERT ON conversations BEGIN
-            INSERT INTO conversations_fts(rowid, content) VALUES (new.id, new.content);
-        END
-    ''')
-    conn.commit()
-    conn.close()
-
-def add_message(session_id, role, content):
-    conn = get_db()
-    timestamp = datetime.utcnow().isoformat()
-    conn.execute(
-        'INSERT INTO conversations (timestamp, session_id, role, content) VALUES (?, ?, ?, ?)',
-        (timestamp, session_id, role, content)
+def save(chat_id, role, content):
+    c = _conn()
+    c.execute(
+        'INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)',
+        (str(chat_id), role, content, datetime.datetime.now(datetime.timezone.utc).isoformat())
     )
-    conn.commit()
-    conn.close()
+    c.commit()
+    c.close()
 
-def get_recent(session_id, limit=10):
-    conn = get_db()
-    rows = conn.execute(
-        'SELECT * FROM conversations WHERE session_id=? ORDER BY timestamp DESC LIMIT ?',
-        (session_id, limit)
+def get_history(chat_id, limit=10):
+    c = _conn()
+    rows = c.execute(
+        'SELECT role, content FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT ?',
+        (str(chat_id), limit)
     ).fetchall()
-    conn.close()
-    return [dict(r) for r in reversed(rows)]
+    c.close()
+    return [{'role': r[0], 'content': r[1]} for r in reversed(rows)]
 
-def search(query, limit=5):
-    conn = get_db()
-    rows = conn.execute(
-        "SELECT c.* FROM conversations c JOIN conversations_fts f ON c.id = f.rowid "
-        "WHERE conversations_fts MATCH ? ORDER BY rank LIMIT ?",
-        (query, limit)
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+def clear(chat_id):
+    c = _conn()
+    c.execute('DELETE FROM messages WHERE chat_id=?', (str(chat_id),))
+    c.commit()
+    c.close()
 
 if __name__ == '__main__':
-    init_db()
-    add_message('test-session', 'user', 'Hello, do you remember me?')
-    add_message('test-session', 'assistant', 'Yes, I do! We just met.')
-    recent = get_recent('test-session')
-    for msg in recent:
-        print(f"{msg['role'].upper()}: {msg['content']}")
-    print("Memory test passed!")
+    save('test123', 'user', 'Hello Korvin')
+    save('test123', 'assistant', 'Hello Carlos, how can I help?')
+    history = get_history('test123')
+    for m in history:
+        print(f"  [{m['role']}]: {m['content']}")
+    print('Memory working.')

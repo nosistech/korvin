@@ -64,7 +64,7 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   if (msg.text && !msg.voice) {
     try {
-      const raw = await sendMessage(msg.text);
+      const raw = await sendMessage(msg.text, String(msg.chat.id));
       const reply = cleanReply(raw);
       await bot.sendMessage(chatId, reply);
     } catch (err) {
@@ -89,7 +89,7 @@ bot.on('voice', async (msg) => {
     const transcript = transcribe(wavPath);
     console.log('Transcription:', transcript);
 
-    const raw = await sendMessage(transcript);
+    const raw = await sendMessage(transcript, String(msg.chat.id));
     const reply = cleanReply(raw);
     console.log('AI reply:', reply);
 
