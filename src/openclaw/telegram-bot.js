@@ -241,6 +241,8 @@ bot.on('voice', async (msg) => {
 
     const transcript = transcribe(wavPath);
     console.log('Transcript:', transcript);
+    const voiceCheck = sanitizeInput(transcript);
+    if (!voiceCheck.safe) { await bot.sendMessage(chatId, `❌ Voice input blocked: ${voiceCheck.reason}`); cleanup(oggPath, wavPath, replyWav); return; }
 
     if (transcript.toLowerCase().includes('research ')) {
       const idx = transcript.toLowerCase().indexOf('research ') + 9;
