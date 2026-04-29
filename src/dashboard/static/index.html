@@ -576,6 +576,65 @@ async function toggleKill() {
   } catch(e) { document.getElementById('kill-status').textContent = 'Error: ' + e.message; }
 }
 
+const MODEL_LABELS = {
+  'deepseek-v4-pro': 'DeepSeek V4 Pro',
+  'deepseek-v4-flash': 'DeepSeek V4 Flash',
+  'gemini-flash': 'Gemini Flash',
+  'ollama-qwen': 'Local — Qwen 2.5',
+  'ollama-deepseek-coder': 'Local — DeepSeek Coder',
+};
+
+async function loadActiveModel() {
+  try {
+    const r = await fetch('/api/active-model');
+    const d = await r.json();
+    renderActiveModel(d.active_model);
+  } catch(e) {
+    document.getElementById('active-model-badge').textContent = 'Unknown';
+  }
+}
+
+function renderActiveModel(slug) {
+  const label = MODEL_LABELS[slug] || slug;
+  document.getElementById('active-model-badge').textContent = '● ' + label;
+  document.querySelectorAll('.model-btn').forEach(btn => {
+    btn.classList.remove('active-model');
+    if (btn.textContent.trim() === label) btn.classList.add('active-model');
+  });
+}
+
+async function switchModel(slug, btn) {
+  const fb = document.getElementById('switch-feedback');
+  const buttons = document.querySelectorAll('.model-btn');
+  if (!confirm(`Switch to ${MODEL_LABELS[slug] || slug}? LiteLLM will restart (~3s).`)) return;
+  buttons.forEach(b => b.disabled = true);
+  fb.textContent = `⏳ Switching to ${MODEL_LABELS[slug]}…`;
+  fb.className = 'switch-feedback loading';
+  try {
+    const r = await fetch('/api/switch-model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({ model: slug })
+    });
+    if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'switch-feedback err'; buttons.forEach(b => b.disabled = false); return; }
+    if (!r.ok) {
+      const d = await r.json();
+      fb.textContent = '❌ ' + (d.detail || 'Switch failed');
+      fb.className = 'switch-feedback err';
+      buttons.forEach(b => b.disabled = false);
+      return;
+    }
+    const d = await r.json();
+    renderActiveModel(d.active_model);
+    fb.textContent = `✅ Switched to ${MODEL_LABELS[d.active_model]} at ${new Date(d.switched_at).toLocaleTimeString()}`;
+    fb.className = 'switch-feedback ok';
+  } catch(e) {
+    fb.textContent = '❌ Error: ' + e.message;
+    fb.className = 'switch-feedback err';
+  }
+  buttons.forEach(b => b.disabled = false);
+}
+
 // ── Boot ───────────────────────────────────────────────────────────
 loadSystem();
 loadContextWindow('cw-home');
