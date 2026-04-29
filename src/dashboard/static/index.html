@@ -5,57 +5,97 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Korvin Dashboard</title>
 <style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+    --border: #30363d; --text: #e6edf3; --text2: #c9d1d9; --text3: #8b949e;
+    --blue: #1f6feb; --green: #2ea043; --yellow: #d29922; --red: #f85149;
+    --cyan: #00d4ff; --link: #58a6ff;
+  }
+  .light {
+    --bg: #ffffff; --bg2: #f6f8fa; --bg3: #eaeef2;
+    --border: #d0d7de; --text: #1f2328; --text2: #656d76; --text3: #8c959f;
+    --blue: #0969da; --green: #1a7f37; --yellow: #9a6700; --red: #d1242f;
+    --cyan: #0550ae; --link: #0969da;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
-  header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 1.4rem; color: #00d4ff; }
-  nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
-  nav button { background: none; border: none; color: #8b949e; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
-  nav button:hover { background: #21262d; color: #e6edf3; }
-  nav button.active { background: #1f6feb; color: #fff; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; transition: background 0.2s, color 0.2s; }
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.4rem; color: var(--cyan); }
+  nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; align-items: center; }
+  nav button { background: none; border: none; color: var(--text3); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+  nav button:hover { background: var(--bg3); color: var(--text); }
+  nav button.active { background: var(--blue); color: #fff; }
+  .theme-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 1rem; margin-left: 8px; }
   main { max-width: 900px; margin: 0 auto; padding: 24px; }
   .page { display: none; }
   .page.active { display: block; }
-  h2 { font-size: 1.2rem; margin-bottom: 16px; color: #e6edf3; }
-  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
-  .card h3 { font-size: 1rem; margin-bottom: 14px; color: #e6edf3; }
-  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.9rem; color: #c9d1d9; }
+  h2 { font-size: 1.2rem; margin-bottom: 16px; color: var(--text); }
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h3 { font-size: 1rem; margin-bottom: 14px; color: var(--text); }
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.9rem; color: var(--text2); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .dot.green { background: #2ea043; box-shadow: 0 0 6px #2ea043; }
-  .dot.yellow { background: #d29922; box-shadow: 0 0 6px #d29922; }
-  .dot.red { background: #f85149; box-shadow: 0 0 6px #f85149; }
-  .dot.blue { background: #1f6feb; box-shadow: 0 0 6px #1f6feb; }
-  .bar-wrap { background: #21262d; border-radius: 6px; height: 14px; overflow: hidden; margin: 8px 0 4px; }
+  .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .dot.blue { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
+  .bar-wrap { background: var(--bg3); border-radius: 6px; height: 14px; overflow: hidden; margin: 8px 0 4px; }
   .bar { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
   .bar.ok { background: linear-gradient(90deg, #2ea043, #3fb950); }
   .bar.warning { background: linear-gradient(90deg, #d29922, #e3b341); }
   .bar.critical { background: linear-gradient(90deg, #f85149, #ff7b72); }
-  .bar-label { font-size: 0.75rem; color: #8b949e; display: flex; justify-content: space-between; margin-top: 4px; }
-  .slider-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 0.85rem; color: #8b949e; }
-  input[type=range] { flex: 1; accent-color: #1f6feb; }
+  .bar-label { font-size: 0.75rem; color: var(--text3); display: flex; justify-content: space-between; margin-top: 4px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 0.85rem; color: var(--text3); }
+  input[type=range] { flex: 1; accent-color: var(--blue); }
   .msg-list { max-height: 360px; overflow-y: auto; }
   .msg { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; line-height: 1.5; }
-  .msg.user { background: #1f2937; border-left: 3px solid #1f6feb; }
-  .msg.assistant { background: #0d2137; border-left: 3px solid #2ea043; }
-  .msg-role { font-size: 0.72rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .stat-box { background: #21262d; border-radius: 8px; padding: 14px; text-align: center; }
-  .stat-val { font-size: 1.5rem; font-weight: 700; color: #00d4ff; }
-  .stat-lbl { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
-  .skill-chip { display: inline-block; background: #1f2937; border: 1px solid #30363d; border-radius: 20px; padding: 6px 14px; margin: 4px; font-size: 0.82rem; color: #58a6ff; }
-  .threat-item { padding: 8px 12px; background: #1a1f29; border-left: 3px solid #d29922; border-radius: 4px; margin-bottom: 8px; font-size: 0.83rem; color: #c9d1d9; }
+  .msg.user { background: var(--bg3); border-left: 3px solid var(--blue); }
+  .msg.assistant { background: var(--bg3); border-left: 3px solid var(--green); }
+  .msg.system { background: var(--bg3); border-left: 3px solid var(--cyan); font-style: italic; }
+  .msg-role { font-size: 0.72rem; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .summary-badge { display: inline-block; background: var(--cyan); color: #000; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; margin-right: 6px; vertical-align: middle; letter-spacing: 0.05em; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+  .stat-box { background: var(--bg3); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--cyan); }
+  .stat-lbl { font-size: 0.75rem; color: var(--text3); margin-top: 4px; }
+  .skill-chip { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; margin: 4px; font-size: 0.82rem; color: var(--link); }
+  .threat-item { padding: 8px 12px; background: var(--bg3); border-left: 3px solid var(--yellow); border-radius: 4px; margin-bottom: 8px; font-size: 0.83rem; color: var(--text2); }
   .kill-btn { color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin-top: 10px; transition: background 0.3s; }
-  .log-box { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 0.8rem; color: #7ee787; max-height: 320px; overflow-y: auto; line-height: 1.7; white-space: pre-wrap; }
-  .search-input { width: 100%; background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; color: #e6edf3; font-size: 0.9rem; margin-bottom: 12px; outline: none; }
-  .search-input:focus { border-color: #1f6feb; }
-  .refresh-btn { background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; float: right; }
-  .refresh-btn:hover { color: #e6edf3; }
+  .log-box { background: var(--bg); border: 1px solid var(--bg3); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 0.8rem; max-height: 320px; overflow-y: auto; line-height: 1.7; white-space: pre-wrap; }
+  .log-line.error { color: var(--red); }
+  .log-line.warn { color: var(--yellow); }
+  .log-line.info { color: #7ee787; }
+  .search-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; outline: none; }
+  .search-input:focus { border-color: var(--blue); }
+  .refresh-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text3); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; float: right; }
+  .refresh-btn:hover { color: var(--text); }
   .tag { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; margin-left: 8px; }
   .tag.ok { background: #1a3d2b; color: #2ea043; }
   .tag.warning { background: #3d2e00; color: #d29922; }
   .tag.critical { background: #3d1c1c; color: #f85149; }
-  .cw-meta { font-size: 0.85rem; color: #8b949e; margin-bottom: 6px; }
-  .cw-meta strong { color: #e6edf3; }
+  .cw-meta { font-size: 0.85rem; color: var(--text3); margin-bottom: 6px; }
+  .cw-meta strong { color: var(--text); }
+  .kill-status { font-size: 0.85rem; margin-top: 10px; color: var(--text3); }
+  .mode-toggle { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 0.85rem; }
+  .mode-toggle label { color: var(--text3); cursor: pointer; }
+  .toggle-switch { position: relative; width: 44px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--bg3); border-radius: 24px; cursor: pointer; transition: 0.3s; border: 1px solid var(--border); }
+  .toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: var(--text3); border-radius: 50%; transition: 0.3s; }
+  input:checked + .toggle-slider { background: var(--blue); }
+  input:checked + .toggle-slider:before { transform: translateX(20px); background: #fff; }
+  .apply-btn { background: var(--blue); color: #fff; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 12px; transition: opacity 0.2s; }
+  .apply-btn:hover { opacity: 0.85; }
+  .apply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .prune-btn { background: var(--yellow); color: #000; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 12px; margin-left: 8px; transition: opacity 0.2s; }
+  .prune-btn:hover { opacity: 0.85; }
+  .strategy-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; margin-top: 10px; width: 100%; max-width: 320px; }
+  .feedback { font-size: 0.8rem; margin-top: 8px; min-height: 18px; }
+  .feedback.ok { color: var(--green); }
+  .feedback.err { color: var(--red); }
+  .field-input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; max-width: 420px; margin-top: 6px; }
+  .field-label { font-size: 0.85rem; color: var(--text3); margin-top: 12px; display: block; }
+  .summarizer-fields { margin-top: 4px; padding: 14px; background: var(--bg3); border-radius: 8px; border: 1px solid var(--border); }
+  .summarizer-fields .hint { font-size: 0.75rem; color: var(--text3); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -69,6 +109,7 @@
     <button onclick="showPage('security',this)">Security</button>
     <button onclick="showPage('settings',this)">Settings</button>
     <button onclick="showPage('logs',this)">Logs</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️</button>
   </nav>
 </header>
 <main>
@@ -88,9 +129,16 @@
   <div class="card">
     <h3>System Resources <button class="refresh-btn" onclick="loadSystem()">↻ Refresh</button></h3>
     <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val" id="s-cpu">—</div><div class="stat-lbl">CPU %</div></div>
+      <div class="stat-box"><div class="stat-val" id="s-mem-used">—</div><div class="stat-lbl">RAM Used (MB)</div></div>
       <div class="stat-box"><div class="stat-val" id="s-disk-used">—</div><div class="stat-lbl">Disk Used</div></div>
       <div class="stat-box"><div class="stat-val" id="s-disk-free">—</div><div class="stat-lbl">Disk Free</div></div>
-      <div class="stat-box"><div class="stat-val" id="s-mem-used">—</div><div class="stat-lbl">RAM Used (MB)</div></div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="cw-meta">RAM <strong id="s-mem-pct">—</strong>%</div>
+      <div class="bar-wrap"><div class="bar ok" id="bar-mem" style="width:0%"></div></div>
+      <div class="cw-meta" style="margin-top:10px">Disk <strong id="s-disk-pct">—</strong></div>
+      <div class="bar-wrap"><div class="bar ok" id="bar-disk" style="width:0%"></div></div>
     </div>
   </div>
   <div class="card">
@@ -109,7 +157,7 @@
     <span class="skill-chip">📝 document-drafter</span>
     <span class="skill-chip">📬 inbox-summarizer</span>
     <span class="skill-chip">🛡️ security-monitor</span>
-    <p style="margin-top:14px;font-size:0.83rem;color:#8b949e;font-style:italic">Skills auto-generated from experience will appear here.</p>
+    <p style="margin-top:14px;font-size:0.83rem;color:var(--text3);font-style:italic">Skills auto-generated from experience will appear here.</p>
   </div>
 </div>
 
@@ -121,15 +169,50 @@
     <div id="cw-memory"><div class="cw-meta">Loading...</div></div>
     <div class="slider-row">
       <span>Message limit:</span>
-      <input type="range" id="cw-slider" min="5" max="100" value="10" oninput="updateSlider(this.value)">
-      <span id="cw-slider-val" style="min-width:28px;color:#e6edf3;font-weight:600">10</span>
+      <input type="range" id="cw-slider" min="1" max="500" value="46" oninput="updateSlider(this.value)">
+      <span id="cw-slider-val" style="min-width:36px;color:var(--text);font-weight:600">46</span>
     </div>
-    <p style="font-size:0.75rem;color:#8b949e;margin-top:8px">Adjust the slider to simulate different memory limits. Green = safe, Yellow = 60%+ full, Red = 80%+ critical.</p>
+    <div class="mode-toggle">
+      <label for="apply-toggle">Simulate only</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="apply-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+      <label for="apply-toggle">Apply to agent</label>
+    </div>
+    <div style="margin-top:14px">
+      <span class="field-label">Memory strategy:</span>
+      <select class="strategy-select" id="strategy-select" onchange="onStrategyChange(this.value)">
+        <option value="sliding_window">Sliding Window — auto-prune oldest</option>
+        <option value="summarize">Summarize — compress then prune</option>
+        <option value="hard_stop">Hard Stop — pause agent at limit</option>
+      </select>
+    </div>
+    <div id="summarizer-fields" style="display:none;margin-top:12px">
+      <div class="summarizer-fields">
+        <div style="font-size:0.85rem;color:var(--cyan);font-weight:600;margin-bottom:8px">⚡ Summarizer Configuration</div>
+        <span class="field-label">Summarizer endpoint URL:</span>
+        <input class="field-input" type="text" id="summarizer-url" value="http://localhost:4000/v1/chat/completions">
+        <div class="hint">Point this to your LiteLLM proxy, Ollama, or any OpenAI-compatible endpoint.</div>
+        <span class="field-label">Summarizer model:</span>
+        <input class="field-input" type="text" id="summarizer-model" value="deepseek-v4-flash">
+        <div class="hint">Examples: deepseek-v4-flash, gemma3:12b, gpt-4o-mini, gemini-flash</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <span class="field-label">Model token cap:</span>
+      <input class="field-input" type="number" id="max-tokens-input" value="128000" min="1000" step="1000">
+      <div style="font-size:0.75rem;color:var(--text3);margin-top:4px">8000 (Llama local) · 32000 (Mistral) · 128000 (DeepSeek/GPT-4o) · 200000 (Claude) · 1000000 (Gemini)</div>
+    </div>
+    <button class="apply-btn" id="apply-btn" onclick="applyLimit()" disabled>Apply to Agent</button>
+    <button class="prune-btn" id="prune-btn" onclick="pruneNow()">✂ Prune Now</button>
+    <div class="feedback" id="limit-feedback"></div>
+    <p style="font-size:0.75rem;color:var(--text3);margin-top:10px">Toggle to <strong>Apply to agent</strong> to save settings. <strong>Prune Now</strong> immediately enforces the current limit.</p>
   </div>
   <div class="card">
     <h3>Conversation History <button class="refresh-btn" onclick="loadMemory()">↻ Refresh</button></h3>
     <input class="search-input" id="mem-search" placeholder="Search messages..." oninput="filterMessages()">
-    <div class="msg-list" id="msg-list"><div style="color:#8b949e;font-size:0.85rem">Loading...</div></div>
+    <div class="msg-list" id="msg-list"><div style="color:var(--text3);font-size:0.85rem">Loading...</div></div>
   </div>
 </div>
 
@@ -146,12 +229,13 @@
   <div class="card">
     <h3>Recent Threats</h3>
     <div class="threat-item">No blocked injection attempts yet.</div>
-    <p style="font-size:0.83rem;color:#8b949e;margin-top:8px">Last monitor run: on demand via threat-monitor.js</p>
+    <p style="font-size:0.83rem;color:var(--text3);margin-top:8px">Last monitor run: on demand via threat-monitor.js</p>
   </div>
-  <div class="card" style="border-color:#f85149">
+  <div class="card" style="border-color:var(--red)">
     <h3>⚠️ Kill Switch</h3>
-    <button class="kill-btn" id="kill-btn" onclick="toggleKill()" style="background:#da3633">Read-Only Mode (OFF)</button>
-    <p style="font-size:0.8rem;color:#8b949e;margin-top:10px">The kill switch instantly locks all agent actions to read-only.</p>
+    <button class="kill-btn" id="kill-btn" onclick="toggleKill()">Loading...</button>
+    <p class="kill-status" id="kill-status">Checking agent mode...</p>
+    <p style="font-size:0.8rem;color:var(--text3);margin-top:10px">The kill switch instantly locks all agent actions to read-only.</p>
   </div>
 </div>
 
@@ -160,8 +244,8 @@
   <h2>Settings</h2>
   <div class="card">
     <h3>LLM Provider</h3>
-    <p style="color:#c9d1d9;font-size:0.9rem">DeepSeek V4 Pro (via LiteLLM proxy on port 4000)</p>
-    <p style="color:#8b949e;font-size:0.83rem;margin-top:6px">Model routing: Flash for simple tasks, Pro for complex</p>
+    <p style="color:var(--text2);font-size:0.9rem">DeepSeek V4 Pro (via LiteLLM proxy on port 4000)</p>
+    <p style="color:var(--text3);font-size:0.83rem;margin-top:6px">Model routing: Flash for simple tasks, Pro for complex</p>
   </div>
   <div class="card">
     <h3>Connected Channels</h3>
@@ -189,33 +273,73 @@
 
 </main>
 <script>
+const API_KEY = '__KORVIN_API_KEY__';
+const AUTH = { 'X-Korvin-Key': API_KEY };
+
 let allMessages = [];
 let killActive = false;
-let cwLimit = 10;
+let cwLimit = 46;
+let configMaxTokens = 128000;
+let autoRefreshTimer = null;
 
+// ── Theme ──────────────────────────────────────────────────────────
+function applyTheme(light) {
+  document.body.classList.toggle('light', light);
+  document.getElementById('theme-btn').textContent = light ? '🌙' : '☀️';
+}
+function toggleTheme() {
+  const isLight = !document.body.classList.contains('light');
+  localStorage.setItem('korvin-theme', isLight ? 'light' : 'dark');
+  applyTheme(isLight);
+}
+applyTheme(localStorage.getItem('korvin-theme') === 'light');
+
+// ── Navigation ─────────────────────────────────────────────────────
 function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('nav button:not(.theme-btn)').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'home') { loadSystem(); loadContextWindow('cw-home'); }
-  if (id === 'memory') { loadMemory(); loadContextWindow('cw-memory'); }
+  clearInterval(autoRefreshTimer);
+  if (id === 'home') {
+    loadSystem(); loadContextWindow('cw-home');
+    autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
+  }
+  if (id === 'memory') { loadMemoryConfig(); loadMemory(); loadContextWindow('cw-memory'); }
   if (id === 'logs') loadLogs();
+  if (id === 'security') loadKillswitch();
 }
 
+// ── System ─────────────────────────────────────────────────────────
 async function loadSystem() {
   try {
     const r = await fetch('/api/system');
     const d = await r.json();
+    document.getElementById('s-cpu').textContent = d.cpu_pct ? d.cpu_pct + '%' : '—';
+    document.getElementById('s-mem-used').textContent = d.mem_used_mb || '—';
     document.getElementById('s-disk-used').textContent = d.disk_used || '—';
     document.getElementById('s-disk-free').textContent = d.disk_free || '—';
-    document.getElementById('s-mem-used').textContent = d.mem_used_mb || '—';
+    if (d.mem_total_mb && d.mem_used_mb) {
+      const memPct = Math.round((parseInt(d.mem_used_mb) / parseInt(d.mem_total_mb)) * 100);
+      document.getElementById('s-mem-pct').textContent = memPct;
+      const barMem = document.getElementById('bar-mem');
+      barMem.style.width = memPct + '%';
+      barMem.className = 'bar ' + (memPct >= 80 ? 'critical' : memPct >= 60 ? 'warning' : 'ok');
+    }
+    if (d.disk_pct) {
+      const diskPct = parseInt(d.disk_pct);
+      document.getElementById('s-disk-pct').textContent = d.disk_pct;
+      const barDisk = document.getElementById('bar-disk');
+      barDisk.style.width = diskPct + '%';
+      barDisk.className = 'bar ' + (diskPct >= 80 ? 'critical' : diskPct >= 60 ? 'warning' : 'ok');
+    }
   } catch(e) { console.error('System load error:', e); }
 }
 
+// ── Context Window ─────────────────────────────────────────────────
 async function loadContextWindow(targetId) {
   try {
-    const r = await fetch(`/api/memory/context-window?limit=${cwLimit}`);
+    const r = await fetch(`/api/memory/context-window?limit=${cwLimit}&max_tokens=${configMaxTokens}`);
     const d = await r.json();
     const pct = d.pct_messages || 0;
     const status = d.status || 'ok';
@@ -226,7 +350,7 @@ async function loadContextWindow(targetId) {
         Messages in context: <strong>${d.messages_used}</strong> / ${d.messages_limit}
         &nbsp;·&nbsp; ~<strong>${d.tokens_estimate}</strong> tokens used
         &nbsp;·&nbsp; <strong>${pct}%</strong> of message limit
-        &nbsp;·&nbsp; <strong>${d.pct_tokens}%</strong> of ${(d.max_tokens/1000).toFixed(0)}k token cap
+        &nbsp;·&nbsp; <strong>${d.pct_tokens}%</strong> of ${(configMaxTokens/1000).toFixed(0)}k token cap
       </div>
       <div class="bar-wrap"><div class="bar ${status}" style="width:${Math.min(pct,100)}%"></div></div>
       <div class="bar-label"><span>0%</span><span>60% warn</span><span>80% critical</span><span>100%</span></div>
@@ -234,12 +358,106 @@ async function loadContextWindow(targetId) {
   } catch(e) { console.error('Context window error:', e); }
 }
 
+// ── Memory Config ──────────────────────────────────────────────────
+async function loadMemoryConfig() {
+  try {
+    const r = await fetch('/api/memory/limit');
+    const d = await r.json();
+    cwLimit = d.memory_limit;
+    configMaxTokens = d.max_tokens;
+    document.getElementById('cw-slider').value = cwLimit;
+    document.getElementById('cw-slider-val').textContent = cwLimit;
+    document.getElementById('max-tokens-input').value = configMaxTokens;
+    document.getElementById('strategy-select').value = d.memory_strategy;
+    if (d.summarizer_url) document.getElementById('summarizer-url').value = d.summarizer_url;
+    if (d.summarizer_model) document.getElementById('summarizer-model').value = d.summarizer_model;
+    onStrategyChange(d.memory_strategy);
+    loadContextWindow('cw-memory');
+  } catch(e) { console.error('Memory config load error:', e); }
+}
+
+function onStrategyChange(val) {
+  const fields = document.getElementById('summarizer-fields');
+  fields.style.display = val === 'summarize' ? 'block' : 'none';
+  const applyMode = document.getElementById('apply-toggle').checked;
+  document.getElementById('apply-btn').disabled = !applyMode;
+}
+
 function updateSlider(val) {
   cwLimit = parseInt(val);
   document.getElementById('cw-slider-val').textContent = val;
+  const applyMode = document.getElementById('apply-toggle').checked;
+  document.getElementById('apply-btn').disabled = !applyMode;
   loadContextWindow('cw-memory');
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('apply-toggle').addEventListener('change', function() {
+    document.getElementById('apply-btn').disabled = !this.checked;
+    const fb = document.getElementById('limit-feedback');
+    fb.textContent = this.checked ? 'Apply mode active — changes will be saved to agent config.' : '';
+    fb.className = 'feedback ok';
+  });
+});
+
+async function applyLimit() {
+  const limit = parseInt(document.getElementById('cw-slider').value);
+  const maxTokens = parseInt(document.getElementById('max-tokens-input').value);
+  const strategy = document.getElementById('strategy-select').value;
+  const summUrl = document.getElementById('summarizer-url').value;
+  const summModel = document.getElementById('summarizer-model').value;
+  const fb = document.getElementById('limit-feedback');
+  try {
+    const r = await fetch('/api/memory/limit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({
+        memory_limit: limit,
+        max_tokens: maxTokens,
+        memory_strategy: strategy,
+        summarizer_url: summUrl,
+        summarizer_model: summModel
+      })
+    });
+    if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; return; }
+    const d = await r.json();
+    configMaxTokens = d.max_tokens;
+    const strategyLabel = strategy === 'summarize' ? `summarize (${summModel})` : strategy;
+    fb.textContent = `✓ Saved — limit: ${d.memory_limit} msgs · ${(d.max_tokens/1000).toFixed(0)}k tokens · strategy: ${strategyLabel}`;
+    fb.className = 'feedback ok';
+    loadContextWindow('cw-memory');
+  } catch(e) {
+    fb.textContent = 'Error: ' + e.message;
+    fb.className = 'feedback err';
+  }
+}
+
+async function pruneNow() {
+  const fb = document.getElementById('limit-feedback');
+  const btn = document.getElementById('prune-btn');
+  btn.disabled = true;
+  btn.textContent = 'Pruning...';
+  try {
+    const r = await fetch('/api/memory/prune', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({ chat_id: '8023887825' })
+    });
+    if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; btn.disabled = false; btn.textContent = '✂ Prune Now'; return; }
+    const d = await r.json();
+    fb.textContent = d.pruned > 0 ? `✓ Pruned ${d.pruned} messages. Limit: ${d.limit}.` : `✓ Nothing to prune — already within limit of ${d.limit}.`;
+    fb.className = 'feedback ok';
+    loadMemory();
+    loadContextWindow('cw-memory');
+  } catch(e) {
+    fb.textContent = 'Error: ' + e.message;
+    fb.className = 'feedback err';
+  }
+  btn.disabled = false;
+  btn.textContent = '✂ Prune Now';
+}
+
+// ── Conversation History ───────────────────────────────────────────
 async function loadMemory() {
   try {
     const r = await fetch('/api/memory/recent?limit=30');
@@ -247,27 +465,34 @@ async function loadMemory() {
     allMessages = d.messages || [];
     renderMessages(allMessages);
   } catch(e) {
-    document.getElementById('msg-list').innerHTML = '<p style="color:#f85149;font-size:0.85rem">Error loading memory.</p>';
+    document.getElementById('msg-list').innerHTML = '<p style="color:var(--red);font-size:0.85rem">Error loading memory.</p>';
   }
 }
 
 function renderMessages(msgs) {
   const el = document.getElementById('msg-list');
   if (!msgs.length) {
-    el.innerHTML = '<p style="color:#8b949e;font-size:0.85rem">No conversations stored yet.</p>';
+    el.innerHTML = '<p style="color:var(--text3);font-size:0.85rem">No conversations stored yet.</p>';
     return;
   }
-  el.innerHTML = msgs.map(m => `
-    <div class="msg ${m.role}">
-      <div class="msg-role">${m.role} &middot; ${m.timestamp ? m.timestamp.slice(0,16).replace('T',' ') : 'unknown'}</div>
-      ${escapeHtml(m.content)}
-    </div>
-  `).join('');
+  el.innerHTML = msgs.map(m => {
+    const isSummary = m.role === 'system' && m.content.startsWith('[SUMMARY]');
+    const content = isSummary ? m.content.replace('[SUMMARY]', '').trim() : m.content;
+    const roleLabel = isSummary
+      ? '<span class="summary-badge">SUMMARY</span>'
+      : m.role;
+    return `
+      <div class="msg ${m.role}${isSummary ? ' summary' : ''}">
+        <div class="msg-role">${roleLabel} &middot; ${m.timestamp ? m.timestamp.slice(0,16).replace('T',' ') : 'unknown'}</div>
+        ${escapeHtml(content)}
+      </div>
+    `;
+  }).join('');
   el.scrollTop = el.scrollHeight;
 }
 
 function escapeHtml(t) {
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function filterMessages() {
@@ -275,30 +500,67 @@ function filterMessages() {
   renderMessages(q ? allMessages.filter(m => m.content.toLowerCase().includes(q)) : allMessages);
 }
 
-function loadLogs() {
-  const now = new Date().toISOString().slice(0,19).replace('T',' ');
-  document.getElementById('log-box').textContent = [
-    `${now} — Korvin dashboard started`,
-    `${now} — Agent: online`,
-    `${now} — LiteLLM proxy: port 4000`,
-    `${now} — Telegram bot: @NosisTechBot active`,
-    `${now} — Voice: Whisper + Kokoro ready`,
-    `${now} — Memory: SQLite active at /data/memory.db`,
-    `${now} — Security: sandbox + defender + monitor active`,
-    `${now} — Dashboard: FastAPI on port 3000`,
-  ].join('\n');
+// ── Logs ───────────────────────────────────────────────────────────
+async function loadLogs() {
+  const box = document.getElementById('log-box');
+  box.textContent = 'Loading...';
+  try {
+    const r = await fetch('/api/logs?lines=100', { headers: AUTH });
+    if (r.status === 403) { box.textContent = 'Auth error — key mismatch.'; return; }
+    const d = await r.json();
+    if (!d.lines || !d.lines.length) { box.textContent = 'No log entries found.'; return; }
+    box.innerHTML = d.lines.map(line => {
+      const cls = line.includes('ERROR') ? 'error' : line.includes('WARNING') ? 'warn' : 'info';
+      return `<span class="log-line ${cls}">${escapeHtml(line)}</span>`;
+    }).join('\n');
+    box.scrollTop = box.scrollHeight;
+  } catch(e) { box.textContent = 'Failed to load logs: ' + e.message; }
 }
 
-function toggleKill() {
-  killActive = !killActive;
+// ── Killswitch ─────────────────────────────────────────────────────
+async function loadKillswitch() {
+  try {
+    const r = await fetch('/api/killswitch');
+    const d = await r.json();
+    killActive = d.killswitch;
+    renderKillswitch();
+  } catch(e) { console.error('Killswitch load error:', e); }
+}
+
+function renderKillswitch() {
   const btn = document.getElementById('kill-btn');
-  btn.textContent = killActive ? 'Read-Only Mode (ON) — Click to Disable' : 'Read-Only Mode (OFF)';
-  btn.style.background = killActive ? '#388bfd' : '#da3633';
+  const status = document.getElementById('kill-status');
+  if (killActive) {
+    btn.textContent = '🔴 Read-Only Mode ON — Click to Disable';
+    btn.style.background = '#388bfd';
+    status.textContent = 'Agent is locked to read-only. No write actions will execute.';
+    status.style.color = '#388bfd';
+  } else {
+    btn.textContent = '🟢 Read-Only Mode OFF — Click to Enable';
+    btn.style.background = '#da3633';
+    status.textContent = 'Agent is running normally.';
+    status.style.color = '#2ea043';
+  }
 }
 
-// Boot
+async function toggleKill() {
+  try {
+    const r = await fetch('/api/killswitch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({ enabled: !killActive })
+    });
+    if (r.status === 403) { document.getElementById('kill-status').textContent = 'Auth error.'; return; }
+    const d = await r.json();
+    killActive = d.killswitch;
+    renderKillswitch();
+  } catch(e) { document.getElementById('kill-status').textContent = 'Error: ' + e.message; }
+}
+
+// ── Boot ───────────────────────────────────────────────────────────
 loadSystem();
 loadContextWindow('cw-home');
+autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
 </script>
 </body>
 </html>

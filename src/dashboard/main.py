@@ -1,12 +1,27 @@
-import os, sqlite3, subprocess
-from fastapi import FastAPI
+import os, sqlite3, subprocess, re, json
+from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI(title="Korvin Dashboard")
 app.mount("/static", StaticFiles(directory="/root/korvin/src/dashboard/static"), name="static")
 
 DB_PATH = "/root/korvin/data/memory.db"
+KILLSWITCH_FLAG = "/root/korvin/data/killswitch.flag"
+
+def require_key(x_korvin_key: Optional[str] = Header(default=None)):
+    api_key = os.environ.get("KORVIN_API_KEY", "")
+    if not api_key or x_korvin_key != api_key:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+LOG_SANITIZE = re.compile(
+    r'(Traceback \(most recent call last\)|File "/.*?"|^\s+.*\.py.*$)',
+    re.MULTILINE
+)
+
+# ── Public endpoints ────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 def root():
@@ -22,9 +37,11 @@ def system_info():
     try:
         disk = subprocess.check_output("df -h / | tail -1", shell=True).decode().split()
         mem = subprocess.check_output("free -m | grep Mem", shell=True).decode().split()
+        cpu = subprocess.check_output("top -bn1 | grep 'Cpu(s)' | awk '{print $2}'", shell=True).decode().strip()
         return {
             "disk_used": disk[2], "disk_free": disk[3], "disk_pct": disk[4],
             "mem_total_mb": mem[1], "mem_used_mb": mem[2], "mem_free_mb": mem[3],
+            "cpu_pct": cpu,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -71,3 +88,97 @@ def context_window(chat_id: str = "8023887825", limit: int = 10, max_tokens: int
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/api/killswitch")
+def killswitch_status():
+    active = os.path.exists(KILLSWITCH_FLAG)
+    return {"killswitch": active, "mode": "read_only" if active else "normal"}
+
+# ── Protected endpoints ─────────────────────────────────────────────
+
+@app.get("/api/logs", dependencies=[Depends(require_key)])
+def get_logs(lines: int = 100):
+    try:
+        output = subprocess.check_output(
+            ["journalctl", "-u", "korvin-dashboard", f"-n{lines}", "--no-pager"],
+            stderr=subprocess.STDOUT
+        ).decode()
+        sanitized = LOG_SANITIZE.sub("[sanitized]", output)
+        return {"lines": sanitized.strip().splitlines()}
+    except Exception as e:
+        return {"lines": [], "error": str(e)}
+
+class KillswitchRequest(BaseModel):
+    enabled: bool
+
+@app.post("/api/killswitch", dependencies=[Depends(require_key)])
+def killswitch_set(body: KillswitchRequest):
+    if body.enabled:
+        open(KILLSWITCH_FLAG, "w").close()
+    else:
+        if os.path.exists(KILLSWITCH_FLAG):
+            os.remove(KILLSWITCH_FLAG)
+    active = os.path.exists(KILLSWITCH_FLAG)
+    return {"killswitch": active, "mode": "read_only" if active else "normal"}
+
+CONFIG_PATH = "/root/korvin/config.json"
+
+def _read_config():
+    try:
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _write_config(updates: dict):
+    config = _read_config()
+    config.update(updates)
+    with open(CONFIG_PATH, 'w') as f:
+        json.dump(config, f, indent=2)
+
+@app.get("/api/memory/limit")
+def get_memory_limit():
+    config = _read_config()
+    return {
+        "memory_limit": config.get("memory_limit", 100),
+        "max_tokens": config.get("max_tokens", 128000),
+        "memory_strategy": config.get("memory_strategy", "sliding_window"),
+        "summarizer_url": config.get("summarizer_url", "http://localhost:4000/v1/chat/completions"),
+        "summarizer_model": config.get("summarizer_model", "deepseek-v4-flash")
+    }
+
+class MemoryLimitRequest(BaseModel):
+    summarizer_url: str = "http://localhost:4000/v1/chat/completions"
+    summarizer_model: str = "deepseek-v4-flash"
+    memory_limit: int
+    max_tokens: int
+    memory_strategy: str = "sliding_window"
+
+@app.post("/api/memory/limit", dependencies=[Depends(require_key)])
+def set_memory_limit(body: MemoryLimitRequest):
+    if body.memory_limit < 1:
+        raise HTTPException(status_code=400, detail="memory_limit must be at least 1")
+    if body.max_tokens < 1000:
+        raise HTTPException(status_code=400, detail="max_tokens must be at least 1000")
+    if body.memory_strategy not in ["sliding_window", "hard_stop", "summarize"]:
+        raise HTTPException(status_code=400, detail="Invalid memory_strategy")
+    _write_config({
+        "summarizer_url": body.summarizer_url,
+        "summarizer_model": body.summarizer_model,
+        "memory_limit": body.memory_limit,
+        "max_tokens": body.max_tokens,
+        "memory_strategy": body.memory_strategy
+    })
+    return {"saved": True, "summarizer_url": body.summarizer_url, "summarizer_model": body.summarizer_model, "memory_limit": body.memory_limit, "max_tokens": body.max_tokens, "memory_strategy": body.memory_strategy}
+
+class PruneRequest(BaseModel):
+    chat_id: str = "8023887825"
+
+@app.post("/api/memory/prune", dependencies=[Depends(require_key)])
+def prune_memory(body: PruneRequest):
+    from src.hermes.memory import prune
+    config = _read_config()
+    limit = config.get("memory_limit", 100)
+    pruned = prune(body.chat_id, limit)
+    return {"pruned": pruned, "limit": limit, "chat_id": body.chat_id}
+
