@@ -41,7 +41,11 @@ function registerPatch(bot, deps) {
           ].join('\n');
           const raw = await sendMessage(prompt, chatId);
           const reply = `📋 *Patch intelligence for \`${target}\`*\n\n${raw}`;
-          await bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+          try {
+            await bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+          } catch (_) {
+            await bot.sendMessage(msg.chat.id, reply.replace(/[*`_]/g, ''));
+          }
           if (logActivity) {
             try { logActivity('patch_cve_research', target, raw.substring(0, 200)); } catch (_) {}
           }
