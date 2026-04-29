@@ -14,7 +14,7 @@ const os = require('os');
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 const { sanitizeInput } = require('../middleware/sanitizer');
-const { requestConfirmation, confirmAction, cancelAction, listPending } = require('../middleware/confirmation-gate');
+const { confirmationGate, confirmAction, cancelAction, listPending } = require('../middleware/confirmation-gate');
 const { defend } = require('../security/defender');
 
 // ── Skills ────────────────────────────────────────────────────────────────────
@@ -183,9 +183,7 @@ bot.onText(/\/pending/, (msg) => {
 });
 
 // ── Phase B Commands ──────────────────────────────────────────────────────────
-
-const commandDeps = { requestConfirmation, logActivity };
-
+const commandDeps = { confirmationGate, logActivity };
 registerPatch(bot, commandDeps);
 registerScan(bot, commandDeps);
 registerCompliance(bot, commandDeps);

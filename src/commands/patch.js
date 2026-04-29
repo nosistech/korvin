@@ -1,19 +1,10 @@
 // src/commands/patch.js
-// /patch command — HIGH risk, requires confirmation
+// /patch command — HIGH risk, uses confirmationGate
 
 'use strict';
 
-/**
- * registerPatch(bot, { requestConfirmation, logActivity })
- *
- * Registers the /patch command on the bot instance.
- * Uses the confirmation gate before executing any patch action.
- *
- * @param {TelegramBot} bot
- * @param {object} deps - { requestConfirmation, logActivity }
- */
 function registerPatch(bot, deps) {
-  const { requestConfirmation, logActivity } = deps;
+  const { confirmationGate, logActivity } = deps;
 
   bot.onText(/\/patch(?:\s+(.+))?/, async (msg, match) => {
     const chatId = String(msg.chat.id);
@@ -21,41 +12,32 @@ function registerPatch(bot, deps) {
     const target = match[1] ? match[1].trim() : null;
 
     if (!target) {
-      await bot.sendMessage(
-        msg.chat.id,
+      await bot.sendMessage(msg.chat.id,
         '⚠️ *Usage:* `/patch <package-or-target>`\n\nExample: `/patch openssl`',
         { parse_mode: 'Markdown' }
       );
       return;
     }
 
-    // Route through confirmation gate — HIGH risk
-    const pendingId = `patch_${Date.now()}`;
-    const actionDescription = `Apply security patch: *${target}*`;
-
-    const gateResult = requestConfirmation({
-      pendingId,
-      chatId,
-      userId,
-      risk: 'HIGH',
-      action: 'patch',
-      target,
-      description: actionDescription
-    });
-
-    await bot.sendMessage(
-      msg.chat.id,
-      `🔴 *HIGH RISK — Patch Request*\n\n` +
-      `Target: \`${target}\`\n` +
-      `Action: Apply system/package patch\n\n` +
-      `To confirm: \`/confirm ${gateResult.pendingId}\`\n` +
-      `To cancel: \`/cancel ${gateResult.pendingId}\`\n\n` +
-      `⏱ Expires in 5 minutes.`,
-      { parse_mode: 'Markdown' }
-    );
-
-    if (logActivity) {
-      try { logActivity('patch_requested', target, `Pending ID: ${gateResult.pendingId}`); } catch (_) {}
+    try {
+      await confirmationGate({
+        action: 'patch',
+        args: { target },
+        chatId,
+        userId,
+        sendMessage: (cid, text) => bot.sendMessage(cid, text, { parse_mode: 'Markdown' }),
+        executor: async () => {
+          if (logActivity) {
+            try { logActivity('patch_executed', target, 'Patch confirmed and executed.'); } catch (_) {}
+          }
+          await bot.sendMessage(msg.chat.id,
+            `✅ *Patch executed:* \`${target}\`\n\n_Stub — wire real patch logic here._`,
+            { parse_mode: 'Markdown' }
+          );
+        }
+      });
+    } catch (err) {
+      await bot.sendMessage(msg.chat.id, `❌ Patch error: ${err.message}`);
     }
   });
 }
