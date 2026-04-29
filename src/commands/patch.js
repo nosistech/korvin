@@ -1,5 +1,6 @@
 // src/commands/patch.js
 // /patch command — HIGH risk, uses confirmationGate
+// LLM CVE research only — no shell execution
 
 'use strict';
 
@@ -13,7 +14,7 @@ function registerPatch(bot, deps) {
 
     if (!target) {
       await bot.sendMessage(msg.chat.id,
-        '⚠️ *Usage:* `/patch <package-or-target>`\n\nExample: `/patch openssl`',
+        '⚠️ *Usage:* `/patch <package>`\n\nExample: `/patch openssl`',
         { parse_mode: 'Markdown' }
       );
       return;
@@ -27,13 +28,23 @@ function registerPatch(bot, deps) {
         userId,
         sendMessage: (cid, text) => bot.sendMessage(cid, text, { parse_mode: 'Markdown' }),
         executor: async () => {
-          if (logActivity) {
-            try { logActivity('patch_executed', target, 'Patch confirmed and executed.'); } catch (_) {}
-          }
+          const { sendMessage } = require('../openclaw/gateway');
           await bot.sendMessage(msg.chat.id,
-            `✅ *Patch executed:* \`${target}\`\n\n_Stub — wire real patch logic here._`,
+            `🔍 *Researching CVEs for \`${target}\`…*`,
             { parse_mode: 'Markdown' }
           );
+          const prompt = [
+            `Research known CVEs for the software package "${target}".`,
+            `For each CVE found, include: CVE ID, CVSS severity score, one-line description, and the recommended patched version or mitigation command.`,
+            `Do NOT execute anything. Provide only security intelligence and recommendations.`,
+            `If the package is not found or has no known CVEs, say so clearly.`,
+          ].join('\n');
+          const raw = await sendMessage(prompt, chatId);
+          const reply = `📋 *Patch intelligence for \`${target}\`*\n\n${raw}`;
+          await bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+          if (logActivity) {
+            try { logActivity('patch_cve_research', target, raw.substring(0, 200)); } catch (_) {}
+          }
         }
       });
     } catch (err) {
