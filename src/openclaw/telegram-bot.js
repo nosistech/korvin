@@ -64,7 +64,8 @@ print(r['text'].strip())
 function generateSpeech(text, outputPath) {
   return new Promise((resolve, reject) => {
     const textFile = '/tmp/korvin_tts_input.txt';
-    fs.writeFileSync(textFile, text, 'utf8');
+    const ttsText = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/`(.*?)`/g, '$1');
+    fs.writeFileSync(textFile, ttsText, 'utf8');
     exec(
       `cd /home/korvin/korvin && venv/bin/python3 -c "
 import warnings, sys
