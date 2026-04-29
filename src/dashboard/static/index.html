@@ -96,6 +96,16 @@
   .field-label { font-size: 0.85rem; color: var(--text3); margin-top: 12px; display: block; }
   .summarizer-fields { margin-top: 4px; padding: 14px; background: var(--bg3); border-radius: 8px; border: 1px solid var(--border); }
   .summarizer-fields .hint { font-size: 0.75rem; color: var(--text3); margin-top: 6px; }
+  .model-switcher { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.model-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+.model-btn:hover { border-color: var(--blue); color: var(--text); }
+.model-btn.active-model { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+.model-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.model-badge { display: inline-block; background: var(--bg3); border: 1px solid var(--cyan); color: var(--cyan); font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; margin-top: 8px; }
+.switch-feedback { font-size: 0.8rem; margin-top: 10px; min-height: 18px; }
+.switch-feedback.ok { color: var(--green); }
+.switch-feedback.err { color: var(--red); }
+.switch-feedback.loading { color: var(--yellow); }
 </style>
 </head>
 <body>
@@ -242,10 +252,18 @@
 <!-- SETTINGS -->
 <div id="page-settings" class="page">
   <h2>Settings</h2>
-  <div class="card">
-    <h3>LLM Provider</h3>
-    <p style="color:var(--text2);font-size:0.9rem">DeepSeek V4 Pro (via LiteLLM proxy on port 4000)</p>
-    <p style="color:var(--text3);font-size:0.83rem;margin-top:6px">Model routing: Flash for simple tasks, Pro for complex</p>
+   <div class="card">
+    <h3>🤖 Active Model</h3>
+    <div class="model-badge" id="active-model-badge">Loading...</div>
+    <div class="model-switcher" id="model-switcher">
+      <button class="model-btn" onclick="switchModel('deepseek-v4-pro', this)">DeepSeek V4 Pro</button>
+      <button class="model-btn" onclick="switchModel('deepseek-v4-flash', this)">DeepSeek V4 Flash</button>
+      <button class="model-btn" onclick="switchModel('gemini-flash', this)">Gemini Flash</button>
+      <button class="model-btn" onclick="switchModel('ollama-qwen', this)">Local — Qwen 2.5</button>
+      <button class="model-btn" onclick="switchModel('ollama-deepseek-coder', this)">Local — DeepSeek Coder</button>
+    </div>
+    <div class="switch-feedback" id="switch-feedback"></div>
+    <p style="font-size:0.75rem;color:var(--text3);margin-top:12px">Switching restarts LiteLLM (~3s). Active commands retry automatically.</p>
   </div>
   <div class="card">
     <h3>Connected Channels</h3>
@@ -308,6 +326,7 @@ function showPage(id, btn) {
   if (id === 'memory') { loadMemoryConfig(); loadMemory(); loadContextWindow('cw-memory'); }
   if (id === 'logs') loadLogs();
   if (id === 'security') loadKillswitch();
+  if (id === 'settings') loadActiveModel();
 }
 
 // ── System ─────────────────────────────────────────────────────────

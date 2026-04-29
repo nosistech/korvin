@@ -1,4 +1,5 @@
-import os, sqlite3, subprocess, re, json
+import os, sqlite3, subprocess, re, json, time
+from datetime import datetime
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -136,6 +137,28 @@ def _write_config(updates: dict):
     with open(CONFIG_PATH, 'w') as f:
         json.dump(config, f, indent=2)
 
+ACTIVE_MODEL_PATH = "/root/korvin/data/active_model.txt"
+
+MODEL_WHITELIST = {
+    "deepseek-v4-pro":      "openai/deepseek-v4-pro",
+    "deepseek-v4-flash":    "openai/deepseek-v4-flash",
+    "gemini-flash":         "gemini/gemini-2.5-flash",
+    "ollama-qwen":          "ollama/qwen2.5:7b",
+    "ollama-deepseek-coder": "ollama/deepseek-coder:6.7b",
+}
+
+def _read_active_model():
+    try:
+        with open(ACTIVE_MODEL_PATH) as f:
+            return f.read().strip()
+    except Exception:
+        return "deepseek-v4-pro"
+
+def _write_active_model(slug: str):
+    os.makedirs(os.path.dirname(ACTIVE_MODEL_PATH), exist_ok=True)
+    with open(ACTIVE_MODEL_PATH, "w") as f:
+        f.write(slug)
+
 @app.get("/api/memory/limit")
 def get_memory_limit():
     config = _read_config()
@@ -182,3 +205,36 @@ def prune_memory(body: PruneRequest):
     pruned = prune(body.chat_id, limit)
     return {"pruned": pruned, "limit": limit, "chat_id": body.chat_id}
 
+@app.get("/api/active-model")
+def get_active_model():
+    slug = _read_active_model()
+    model_string = MODEL_WHITELIST.get(slug, "unknown")
+    return {"active_model": slug, "model_string": model_string}
+
+class SwitchModelRequest(BaseModel):
+    model: str
+
+@app.post("/api/switch-model", dependencies=[Depends(require_key)])
+def switch_model(body: SwitchModelRequest):
+    slug = body.model.strip()
+    if slug not in MODEL_WHITELIST:
+        raise HTTPException(status_code=400, detail=f"Model '{slug}' not in whitelist")
+    previous = _read_active_model()
+    try:
+        _write_active_model(slug)
+        subprocess.run(["systemctl", "restart", "litellm"], check=True, timeout=15)
+        time.sleep(3)
+        import urllib.request
+        try:
+            urllib.request.urlopen("http://localhost:4000/health", timeout=5)
+        except Exception:
+            raise Exception("LiteLLM did not come back healthy")
+        return {
+            "success": True,
+            "active_model": slug,
+            "model_string": MODEL_WHITELIST[slug],
+            "switched_at": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        _write_active_model(previous)
+        raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}. Rolled back to {previous}.")

@@ -1,5 +1,13 @@
 const LITELLM_URL = 'http://localhost:4000/v1/chat/completions';
-const MODEL = 'deepseek-v4-pro';
+const ACTIVE_MODEL_PATH = '/root/korvin/data/active_model.txt';
+
+function getActiveModel() {
+  try {
+    return fs.readFileSync(ACTIVE_MODEL_PATH, 'utf8').trim();
+  } catch (_) {
+    return 'deepseek-v4-pro';
+  }
+}
 const API_KEY = 'nosistech-proxy-2026';
 const { sanitize: defendSanitize } = require('../security/defender');
 const { sanitize: inputSanitize } = require('../middleware/sanitizer');
@@ -44,11 +52,23 @@ async function sendMessage(userMessage, chatId = 'default') {
     ...history,
     { role: 'user', content: safeMessage }
   ];
-  const response = await fetch(LITELLM_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-    body: JSON.stringify({ model: MODEL, messages, temperature: 0.7, stream: false })
-  });
+  let response;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await fetch(LITELLM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+        body: JSON.stringify({ model: getActiveModel(), messages, temperature: 0.7, stream: false })
+      });
+      break;
+    } catch (err) {
+      if (attempt === 0 && err.code === 'ECONNREFUSED') {
+        await new Promise(r => setTimeout(r, 3000));
+      } else {
+        throw err;
+      }
+    }
+  }
   if (!response.ok) throw new Error(`LiteLLM error: ${response.status} ${response.statusText}`);
   const data = await response.json();
   const reply = data.choices[0].message.content;
