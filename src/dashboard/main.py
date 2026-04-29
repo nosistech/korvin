@@ -27,7 +27,10 @@ LOG_SANITIZE = re.compile(
 @app.get("/", response_class=HTMLResponse)
 def root():
     with open("/root/korvin/src/dashboard/static/index.html") as f:
-        return f.read()
+        html = f.read()
+    api_key = os.environ.get("KORVIN_API_KEY", "")
+    html = html.replace("__KORVIN_API_KEY__", api_key)
+    return HTMLResponse(content=html)
 
 @app.get("/api/status")
 def status():
