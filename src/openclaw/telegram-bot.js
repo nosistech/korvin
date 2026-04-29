@@ -208,7 +208,7 @@ bot.on('message', async (msg) => {
     await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
     try {
       const summary = await getResearchSummary(topic);
-      await bot.sendMessage(chatId, summary);
+      await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
     } catch (err) {
       await bot.sendMessage(chatId, `Research error: ${err.message}`);
     }
@@ -250,7 +250,7 @@ bot.on('voice', async (msg) => {
       await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
       try {
         const summary = await getResearchSummary(topic);
-        await bot.sendMessage(chatId, summary);
+        await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
         await generateSpeech(summary, replyWav);
         await bot.sendVoice(chatId, replyWav);
       } catch (err) {
