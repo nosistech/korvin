@@ -217,7 +217,7 @@ bot.on('message', async (msg) => {
 
   try {
     const reply = cleanReply(await sendMessage(text, String(chatId)));
-    await bot.sendMessage(chatId, reply);
+    await bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
   } catch (err) {
     await bot.sendMessage(chatId, 'Error: ' + err.message);
   }
