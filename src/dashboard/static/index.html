@@ -255,13 +255,7 @@
    <div class="card">
     <h3>🤖 Active Model</h3>
     <div class="model-badge" id="active-model-badge">Loading...</div>
-    <div class="model-switcher" id="model-switcher">
-      <button class="model-btn" onclick="switchModel('deepseek-v4-pro', this)">DeepSeek V4 Pro</button>
-      <button class="model-btn" onclick="switchModel('deepseek-v4-flash', this)">DeepSeek V4 Flash</button>
-      <button class="model-btn" onclick="switchModel('gemini-flash', this)">Gemini Flash</button>
-      <button class="model-btn" onclick="switchModel('ollama-qwen', this)">Local — Qwen 2.5</button>
-      <button class="model-btn" onclick="switchModel('ollama-deepseek-coder', this)">Local — DeepSeek Coder</button>
-    </div>
+    <div class="model-switcher" id="model-switcher"></div>
     <div class="switch-feedback" id="switch-feedback"></div>
     <p style="font-size:0.75rem;color:var(--text3);margin-top:12px">Switching restarts LiteLLM (~3s). Active commands retry automatically.</p>
   </div>
@@ -326,7 +320,7 @@ function showPage(id, btn) {
   if (id === 'memory') { loadMemoryConfig(); loadMemory(); loadContextWindow('cw-memory'); }
   if (id === 'logs') loadLogs();
   if (id === 'security') loadKillswitch();
-  if (id === 'settings') loadActiveModel();
+  if (id === 'settings') loadModels();
 }
 
 // ── System ─────────────────────────────────────────────────────────
@@ -576,39 +570,42 @@ async function toggleKill() {
   } catch(e) { document.getElementById('kill-status').textContent = 'Error: ' + e.message; }
 }
 
-const MODEL_LABELS = {
-  'deepseek-v4-pro': 'DeepSeek V4 Pro',
-  'deepseek-v4-flash': 'DeepSeek V4 Flash',
-  'gemini-flash': 'Gemini Flash',
-  'ollama-qwen': 'Local — Qwen 2.5',
-  'ollama-deepseek-coder': 'Local — DeepSeek Coder',
-};
+let modelList = [];
 
-async function loadActiveModel() {
+async function loadModels() {
   try {
-    const r = await fetch('/api/active-model');
+    const r = await fetch('/api/models');
     const d = await r.json();
-    renderActiveModel(d.active_model);
+    modelList = d.models;
+    renderModelButtons(d.models, d.active);
   } catch(e) {
-    document.getElementById('active-model-badge').textContent = 'Unknown';
+    document.getElementById('active-model-badge').textContent = 'Error';
   }
 }
 
-function renderActiveModel(slug) {
-  const label = MODEL_LABELS[slug] || slug;
-  document.getElementById('active-model-badge').textContent = '● ' + label;
-  document.querySelectorAll('.model-btn').forEach(btn => {
-    btn.classList.remove('active-model');
-    if (btn.textContent.trim() === label) btn.classList.add('active-model');
+function renderModelButtons(models, activeSlug) {
+  const container = document.getElementById('model-switcher');
+  container.innerHTML = '';
+  models.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'model-btn';
+    btn.textContent = m.label;
+    btn.onclick = () => switchModel(m.slug, btn);
+    if (m.slug === activeSlug) btn.classList.add('active-model');
+    container.appendChild(btn);
   });
+  const label = models.find(m => m.slug === activeSlug);
+  document.getElementById('active-model-badge').textContent = '● ' + (label ? label.label : activeSlug);
 }
 
 async function switchModel(slug, btn) {
   const fb = document.getElementById('switch-feedback');
   const buttons = document.querySelectorAll('.model-btn');
-  if (!confirm(`Switch to ${MODEL_LABELS[slug] || slug}? LiteLLM will restart (~3s).`)) return;
+  const label = modelList.find(m => m.slug === slug);
+  const name = label ? label.label : slug;
+  if (!confirm(`Switch to ${name}? LiteLLM will restart (~3s).`)) return;
   buttons.forEach(b => b.disabled = true);
-  fb.textContent = `⏳ Switching to ${MODEL_LABELS[slug]}…`;
+  fb.textContent = `⏳ Switching to ${name}…`;
   fb.className = 'switch-feedback loading';
   try {
     const r = await fetch('/api/switch-model', {
@@ -625,8 +622,8 @@ async function switchModel(slug, btn) {
       return;
     }
     const d = await r.json();
-    renderActiveModel(d.active_model);
-    fb.textContent = `✅ Switched to ${MODEL_LABELS[d.active_model]} at ${new Date(d.switched_at).toLocaleTimeString()}`;
+    renderModelButtons(modelList, d.active_model);
+    fb.textContent = `✅ Switched to ${name} at ${new Date(d.switched_at).toLocaleTimeString()}`;
     fb.className = 'switch-feedback ok';
   } catch(e) {
     fb.textContent = '❌ Error: ' + e.message;

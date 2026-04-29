@@ -139,6 +139,14 @@ def _write_config(updates: dict):
 
 ACTIVE_MODEL_PATH = "/root/korvin/data/active_model.txt"
 
+MODEL_LABELS = {
+    "deepseek-v4-pro": "DeepSeek V4 Pro",
+    "deepseek-v4-flash": "DeepSeek V4 Flash",
+    "gemini-flash": "Gemini Flash",
+    "ollama-qwen": "Local — Qwen 2.5",
+    "ollama-deepseek-coder": "Local — DeepSeek Coder",
+}
+
 MODEL_WHITELIST = {
     "deepseek-v4-pro":      "openai/deepseek-v4-pro",
     "deepseek-v4-flash":    "openai/deepseek-v4-flash",
@@ -238,3 +246,13 @@ def switch_model(body: SwitchModelRequest):
     except Exception as e:
         _write_active_model(previous)
         raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}. Rolled back to {previous}.")
+@app.get("/api/models")
+def get_models():
+    models = []
+    for slug, model_string in MODEL_WHITELIST.items():
+        models.append({
+            "slug": slug,
+            "label": MODEL_LABELS.get(slug, slug),
+            "model_string": model_string
+        })
+    return {"models": models, "active": _read_active_model()}
