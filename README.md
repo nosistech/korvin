@@ -510,4 +510,4 @@ MIT — see `LICENSE.md` for full details.
 
 ---
 
-*Built by NosisTech — Cloud Security · AI Governance · Honduras*
+*Built by NosisTech — Cloud Security · AI Governance*
