@@ -1,196 +1,176 @@
-# Korvin
-
-**Self-hosted AI agent framework. Voice-first. Security-native. No lock-in.**
-
+Korvin
+Self-hosted AI agent framework. Voice-first. Security-native. No lock-in.
 Korvin runs on your own machine or a $5 VPS. You bring your API keys. You own your data. No third party ever touches your messages, credentials, or billing.
 
----
-
-## What Is Korvin?
-
+What Is Korvin?
 Korvin is an AI agent you install and run yourself. It listens, thinks, remembers, and acts — through Telegram, voice, or any channel you configure.
-
-Most AI assistants are cloud services. Your conversations live on someone else's server. Your data trains someone else's model. You pay monthly for access you don't control.
-
+Most AI assistants are cloud services. Your conversations live on someone else's server. Your data trains someone else's model. You pay monthly for access you do not control.
 Korvin is different. Every message stays on your machine. Every setting is a config file you can read and edit. If you want to switch from DeepSeek to Claude to a local Llama model, you change one line. No migration. No support ticket. No vendor permission required.
-
 This is what "no lock-in" means in practice.
 
----
+What Korvin Does
 
-## What Korvin Does
+Talks to you by voice — Whisper tiny.en for speech-to-text (~2s response), Kokoro TTS for audio replies
+Answers questions and runs research — web search, document drafting, inbox summarization
+Runs security scans — VirusTotal lookup for URLs, IPs, and file hashes; weekly Lynis system audit
+Researches CVEs on demand — /patch openssl returns severity scores and patch recommendations
+Works through Telegram — WhatsApp, Discord, Signal coming
+Remembers your conversations — persistent SQLite memory with configurable limits
+Manages its own memory — sliding window, summarization, or hard stop strategies
+Monitors itself — live dashboard at dashboard.korvin.cloud or your own domain
+Switches models instantly — tap a model on the dashboard, the agent picks it up on the next message
+Runs on anything — $5 VPS, local GPU machine, cloud VM, Raspberry Pi
 
-- **Talks to you by voice** — Whisper for speech-to-text, Kokoro TTS for responses
-- **Answers questions and runs research** — web search, document drafting, inbox summarization
-- **Works through Telegram** (WhatsApp, Discord, Signal coming)
-- **Remembers your conversations** — persistent SQLite memory with configurable limits
-- **Manages its own memory** — sliding window, summarization, or hard stop strategies
-- **Monitors itself** — live dashboard at `dashboard.korvin.cloud` (or your own domain)
-- **Self-patches against threats** — sandboxed OWASP monitoring
-- **Runs on anything** — $5 VPS, local GPU machine, cloud VM, Raspberry Pi
 
----
+Voice Optimization
+Korvin uses Whisper for speech-to-text. By default it loads tiny.en — an English-only model that is 4x faster and uses 75% less RAM than the standard base model.
+ModelSizeResponse timeBest fortiny.en74 MB~2sVoice commands, fast interactionbase145 MB~8sLonger dictationsmall466 MB~20sBest accuracy
+tiny.en is the default because most Korvin interactions are short voice commands. It works on a $5 VPS or a Raspberry Pi without GPU. The model pre-loads at bot startup so even the first voice message responds in ~2 seconds instead of waiting for a cold start.
+To switch models, change the model name in the transcribe function inside src/openclaw/telegram-bot.js.
 
-## Quick Start
+Commands
+Korvin responds to these commands in Telegram:
+CommandRiskDescription/scan <target>HIGHVirusTotal lookup for a URL, IP, or file hash/scan systemHIGHDisplay the latest Lynis security audit report/patch <package>HIGHLLM-researched CVE report with patch recommendations/status—VPS health — CPU, RAM, disk, uptime/log—Recent Korvin activity/confirm <hash>—Approve a pending HIGH-risk action/cancel <hash>—Cancel a pending HIGH-risk action/pending—List all active pending confirmations/help—Command menu
+Why confirmation gates exist:
+Every HIGH-risk command requires explicit /confirm <hash> before executing. This is an architectural constraint — not a prompt suggestion. The agent cannot bypass it. Pending actions expire after 5 minutes automatically.
+This design came directly from the 2026 PocketOS incident where an AI coding agent deleted a production database in 9 seconds because no confirmation step existed between the agent and destructive action.
+Example /scan flow:
+You:    /scan google.com
+Korvin: 🔐 Confirmation Required — Action: scan — Risk: HIGH
+        Reply /confirm a1b2c3d4 to execute
 
-### Install via npm
+You:    /confirm a1b2c3d4
+Korvin: 🔍 Scanning `google.com`... (url)
 
-```bash
-npm install -g @nosistech/korvin
-korvin init
-```
+        🟢 VirusTotal — `google.com`
+        Type: URL
+        • Malicious:  0/92 engines
+        • Suspicious: 0/92 engines
+        • Harmless:   66 | Undetected: 26
+        • Last submission: 2026-04-30
+        ✅ No threats detected.
+VirusTotal: Korvin checks what is already known across 90+ engines. It never submits anything on your behalf. A free API key is required — get one at virustotal.com and add it to /etc/korvin.env as VIRUSTOTAL_API_KEY. The free tier allows 500 lookups per day.
+Lynis: /scan system reads a weekly security audit generated by a root cron job. The bot never runs Lynis directly — this preserves the privilege boundary. Install Lynis first:
+bashapt-get install lynis
 
-> The setup wizard handles API keys, Telegram configuration, and service startup.
+# Add the weekly cron job
+echo "0 2 * * 0 root lynis audit system --quick > /home/korvin/korvin/data/lynis-report.txt 2>&1" > /etc/cron.d/lynis-audit
 
-### Manual Install (Developer Setup)
+Quick Start
+Install via npm:
+bashnpm install -g @nosistech/korvin
 
-For full control or active development:
+Note: The interactive setup wizard (korvin init) is on the roadmap and not yet available. After installing, follow the Manual Install steps below to configure your instance.
 
-```bash
-# 1. Clone the repo
+Manual Install (full control):
+bash# 1. Clone the repo
 git clone https://github.com/nosistech/korvin.git
 cd korvin
 
-# 2. Create Python virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+# 2. Install Node dependencies
+npm install
 
-# 3. Install dependencies
+# 3. Create Python virtual environment for dashboard and voice
+python3 -m venv venv
+source venv/bin/activate
+
+# 4. Install Python dependencies
 pip install -r requirements.txt
 
-# 4. Configure
+# 5. Configure
 cp config.example.json config.json
 nano config.json
-```
-
-Edit `config.json` with your values:
-
-```json
-{
+Edit config.json:
+json{
   "telegramToken": "YOUR_TELEGRAM_BOT_TOKEN",
   "memory_limit": 46,
   "max_tokens": 128000,
   "memory_strategy": "sliding_window",
   "summarizer_url": "http://localhost:4000/v1/chat/completions",
-  "summarizer_model": "deepseek-v4-flash",
+  "summarizer_model": "YOUR_MODEL_NAME",
   "summarizer_fallback": "sliding_window",
   "litellm_master_key": "YOUR_LITELLM_MASTER_KEY"
 }
-```
+bash# 6. Start the bot
+node src/openclaw/telegram-bot.js
 
-```bash
-# 5. Start the agent
-python3 -m src.hermes.agent
-
-# 6. Start the dashboard
+# 7. Start the dashboard
 uvicorn src.dashboard.main:app --host 127.0.0.1 --port 3002
-```
 
----
+Running as a Service (Recommended)
+Run both the bot and dashboard as systemd services so they survive reboots.
+Create a dedicated system user:
+bashuseradd --system --create-home --home-dir /home/korvin \
+  --shell /bin/bash --comment "KORVIN service account" korvin
 
-## Dashboard Setup
+chown -R korvin:korvin /path/to/korvin
+Bot service — /etc/systemd/system/korvin.service:
+ini[Unit]
+Description=KORVIN AI Security Bot
+After=network.target
 
-The Korvin dashboard gives you a live view of your agent — system resources, memory, logs, and a kill switch.
+[Service]
+Type=simple
+User=korvin
+Group=korvin
+WorkingDirectory=/home/korvin/korvin
+ExecStart=/usr/bin/node src/openclaw/telegram-bot.js
+Restart=on-failure
+RestartSec=10
+EnvironmentFile=/etc/korvin.env
 
-### Run as a systemd service (recommended)
-
-```bash
-sudo nano /etc/systemd/system/korvin-dashboard.service
-```
-
-```ini
-[Unit]
+[Install]
+WantedBy=multi-user.target
+Dashboard service — /etc/systemd/system/korvin-dashboard.service:
+ini[Unit]
 Description=Korvin Dashboard FastAPI
 After=network.target
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
-User=root
-WorkingDirectory=/path/to/korvin
-ExecStart=/path/to/korvin/venv/bin/uvicorn src.dashboard.main:app --host 127.0.0.1 --port 3002
+EnvironmentFile=/etc/korvin.env
+User=korvin
+Group=korvin
+WorkingDirectory=/home/korvin/korvin
+ExecStart=/home/korvin/korvin/venv/bin/uvicorn src.dashboard.main:app --host 127.0.0.1 --port 3002
 Restart=always
 RestartSec=5
-EnvironmentFile=/etc/korvin.env
 
 [Install]
 WantedBy=multi-user.target
-```
+bashsystemctl daemon-reload
+systemctl enable korvin korvin-dashboard
+systemctl start korvin korvin-dashboard
+Environment file — /etc/korvin.env (chmod 600, never committed to git):
+KORVIN_API_KEY=your_dashboard_api_key
+VIRUSTOTAL_API_KEY=your_virustotal_key
+LITELLM_MASTER_KEY=your_litellm_master_key
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable korvin-dashboard
-sudo systemctl start korvin-dashboard
-```
-
-### API Key Setup
-
-The dashboard uses a secret key to protect write endpoints. Generate one and store it:
-
-```bash
-# Generate key
-API_KEY=$(openssl rand -hex 32)
-echo "KORVIN_API_KEY=$API_KEY" > /etc/korvin.env
-chmod 600 /etc/korvin.env
-
-# Inject into dashboard HTML
-source /etc/korvin.env
-sed -i "s/__KORVIN_API_KEY__/$KORVIN_API_KEY/" src/dashboard/static/index.html
-```
-
-> **Important:** `index.html` ships with the placeholder `__KORVIN_API_KEY__`. You must run the `sed` injection after cloning. Store your key in a password manager — label it `KORVIN_DASHBOARD_API_KEY`.
-
-### Expose via Cloudflare Tunnel (recommended)
-
-```bash
-cloudflared tunnel create korvin-dashboard
+Exposing the Dashboard
+The dashboard runs on 127.0.0.1:3002 — loopback only, never exposed directly. Use Cloudflare Tunnel to reach it from anywhere:
+bashcloudflared tunnel create korvin-dashboard
 cloudflared tunnel route dns korvin-dashboard dashboard.yourdomain.com
-```
+Then add Cloudflare Access (zero-trust OTP or SSO) so only you can reach it. This gives you two layers: Cloudflare Access at the edge, API key auth on write endpoints inside the app.
 
-Then lock it with Cloudflare Access (OTP or SSO) so only you can reach it.
-
----
-
-## LiteLLM Setup
-
-Korvin routes all LLM calls through [LiteLLM](https://github.com/BerriAI/litellm) — a proxy that translates any OpenAI-compatible API call to any model provider.
-
-### Why LiteLLM?
-
-Most agents hardcode their model endpoint. Switch providers and you rewrite code. LiteLLM means Korvin never knows or cares which model powers it — DeepSeek, Claude, Gemini, or a local Ollama model all look identical to the agent. Swap models by editing one config file.
-
-### Install and configure
-
-```bash
-pip install litellm
-nano /root/litellm_config.yaml
-```
-
-```yaml
-model_list:
-  - model_name: your-model
+LiteLLM Setup
+Korvin routes all LLM calls through LiteLLM — a proxy that makes every model provider look identical to the agent.
+bashpip install litellm
+Create /root/litellm_config.yaml:
+yamlmodel_list:
+  - model_name: your-model-name
     litellm_params:
       model: openai/your-model-name
       api_base: https://api.yourprovider.com/v1
-      api_key: YOUR_API_KEY
+      api_key: YOUR_PROVIDER_API_KEY
 
 general_settings:
   master_key: YOUR_MASTER_KEY
   drop_params: true
-```
-
-### Run as a systemd service
-
-```bash
-sudo nano /etc/systemd/system/litellm.service
-```
-
-```ini
-[Unit]
+LiteLLM service — /etc/systemd/system/litellm.service:
+ini[Unit]
 Description=LiteLLM Proxy
 After=network.target
-StartLimitIntervalSec=60
-StartLimitBurst=5
 
 [Service]
 User=root
@@ -198,242 +178,144 @@ WorkingDirectory=/root
 ExecStart=/usr/local/bin/litellm --config /root/litellm_config.yaml --port 4000 --host 127.0.0.1
 Restart=always
 RestartSec=5
+EnvironmentFile=/etc/korvin.env
 
 [Install]
 WantedBy=multi-user.target
-```
+bashsystemctl daemon-reload
+systemctl enable litellm
+systemctl start litellm
+Always bind LiteLLM to 127.0.0.1. Verify:
+bashss -tlnp | grep 4000
+# Expected: 127.0.0.1:4000 — never 0.0.0.0
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable litellm
-sudo systemctl start litellm
-```
+Model Switcher
+The dashboard Settings tab lets you swap the active AI model with one tap — no restart, no config file edits.
+How it works:
+Dashboard Settings → select model → writes active_model.txt
+Gateway (gateway.js) → reads file on every message → sends model name to LiteLLM
+LiteLLM → routes to the correct provider
+The switch is instant. The gateway picks it up on the next message.
+To add a new model: add it to MODEL_LABELS and MODEL_WHITELIST in src/dashboard/main.py, add it to litellm_config.yaml with its API key, and the dashboard builds the buttons automatically.
 
-> **Security:** Always bind LiteLLM to `127.0.0.1`, never `0.0.0.0`. Verify with `ss -tlnp | grep 4000`.
-
----
-
-## Memory Architecture
-
-Korvin stores every conversation in a local SQLite database. When the database grows large, Korvin manages it automatically using the strategy you configure.
-
-### Why per-install configuration?
-
-A researcher running Korvin on a local GPU with an 8k context model needs a limit of 20 messages. A developer on a VPS with DeepSeek's 128k context can hold 200. There is no universal right answer — so Korvin stores the limit in `config.json` and each install is sovereign. No two installs need to agree.
-
-### Memory strategies
-
-#### Sliding Window (default)
-
-When messages exceed the limit, the oldest messages are deleted automatically. New messages always come in; oldest always fall off. The agent never stops.
-
-**Choose this when:** you want zero interruptions and don't need long-term context beyond your limit.
-
-**Why we made this the default:** It is the simplest strategy that guarantees the agent keeps running under all conditions. Predictable, auditable, zero dependencies.
-
-#### Summarize
-
-When messages hit the limit, Korvin summarizes the oldest half using your configured LLM, stores the summary as a single `[SUMMARY]` entry, then deletes the originals. You keep the meaning without keeping every word.
-
-**Choose this when:** you need long-term context and are willing to spend a small amount of API tokens or GPU time per summarization cycle.
-
-**Why half the limit?** We evaluated three options: summarize everything, summarize a fixed batch, summarize half. Half scales correctly for every install size — a limit of 10 summarizes 5, a limit of 200 summarizes 100. Fixed batches either over-summarize on small installs or under-summarize on large ones.
-
-**Fallback behavior:** If the summarization LLM call fails, Korvin retries once, then falls back to sliding window automatically. The agent never blocks. We chose retry-once because a single transient failure (network blip, model timeout) should not trigger a permanent fallback, but two consecutive failures almost certainly indicate a real problem worth working around gracefully.
-
-#### Hard Stop
-
-When messages hit the limit, new messages are rejected until the user manually clears memory. The agent pauses.
-
-**Choose this when:** you want full manual control and can tolerate the agent going silent at the limit.
-
-**We document this but do not recommend it as a default** because it creates invisible failure modes — the agent silently stops responding without any obvious error to the end user.
-
-### Configuring memory
-
-In `config.json`:
-
-```json
-{
+Memory Architecture
+Korvin stores every conversation in a local SQLite database and manages growth automatically.
+Strategies:
+Sliding window (default) — oldest messages drop off as new ones arrive. The agent never stops. Choose this when you want zero interruptions.
+Summarize — when messages hit the limit, Korvin summarizes the oldest half using your configured LLM, stores it as a single entry, and deletes the originals. You keep the meaning without keeping every word. If summarization fails, it falls back to sliding window automatically.
+Hard stop — new messages are rejected when the limit is hit until you manually clear memory. Choose this only if you want full manual control and can tolerate the agent going silent.
+Configure in config.json:
+json{
   "memory_limit": 46,
   "max_tokens": 128000,
   "memory_strategy": "sliding_window",
   "summarizer_url": "http://localhost:4000/v1/chat/completions",
-  "summarizer_model": "deepseek-v4-flash"
+  "summarizer_model": "your-model-name"
 }
-```
+Token limits by model:
+ModelToken limitLlama 3 7B local8,000Mistral 7B local32,000DeepSeek V4 / GPT-4o128,000Claude Sonnet / Opus200,000Gemini 2.5 Pro1,000,000
 
-**`max_tokens` reference:**
-
-| Model | Token limit |
-|---|---|
-| Llama 3 7B local | 8,000 |
-| Mistral 7B local | 32,000 |
-| DeepSeek V4 / GPT-4o | 128,000 |
-| Claude Sonnet / Opus | 200,000 |
-| Gemini 2.5 Pro | 1,000,000 |
-
-Or configure via the dashboard — Memory tab → adjust slider → Apply to Agent.
-
----
-
-## Dashboard API
-
-All endpoints are on `http://127.0.0.1:3002`.
-
-### Public endpoints (no auth required)
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/status` | Agent status and version |
-| GET | `/api/system` | CPU, RAM, disk usage |
-| GET | `/api/memory/recent` | Recent conversation messages |
-| GET | `/api/memory/context-window` | Token and message usage |
-| GET | `/api/memory/limit` | Current memory config |
-| GET | `/api/killswitch` | Current killswitch state |
-
-### Protected endpoints (require `X-Korvin-Key` header)
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/logs` | Sanitized system logs |
-| POST | `/api/killswitch` | Toggle read-only mode |
-| POST | `/api/memory/limit` | Save memory configuration |
-| POST | `/api/memory/prune` | Manually enforce memory limit |
-
-**Why only some endpoints are protected:**
-
-Read-only endpoints like `/api/system` and `GET /api/killswitch` are safe to leave public — they expose no secrets and perform no actions. Write and sensitive-read endpoints are protected because they can change agent behavior or expose internal log data. This split means future monitoring integrations can poll public endpoints without needing the API key.
-
-### Example API calls
-
-```bash
-# Check system resources
+Dashboard API
+All endpoints on http://127.0.0.1:3002.
+Public (no auth):
+MethodEndpointDescriptionGET/api/statusAgent status and versionGET/api/systemCPU, RAM, disk usageGET/api/memory/recentRecent conversation messagesGET/api/memory/context-windowToken and message usageGET/api/memory/limitCurrent memory configGET/api/killswitchCurrent killswitch stateGET/api/active-modelCurrently active modelGET/api/modelsAll configured models
+Protected (require X-Korvin-Key header):
+MethodEndpointDescriptionGET/api/logsSanitized system logsPOST/api/killswitchToggle read-only modePOST/api/memory/limitSave memory configurationPOST/api/memory/pruneManually enforce memory limitPOST/api/switch-modelSwitch the active model
+Example calls:
+bash# System resources
 curl http://127.0.0.1:3002/api/system
 
-# Get recent messages
-curl http://127.0.0.1:3002/api/memory/recent?limit=20
+# Switch model
+curl -X POST http://127.0.0.1:3002/api/switch-model \
+  -H "Content-Type: application/json" \
+  -H "X-Korvin-Key: YOUR_API_KEY" \
+  -d '{"model": "deepseek-v4-pro"}'
 
-# Toggle killswitch (protected)
+# Toggle killswitch
 curl -X POST http://127.0.0.1:3002/api/killswitch \
   -H "Content-Type: application/json" \
   -H "X-Korvin-Key: YOUR_API_KEY" \
   -d '{"enabled": true}'
 
-# Set memory limit (protected)
-curl -X POST http://127.0.0.1:3002/api/memory/limit \
-  -H "Content-Type: application/json" \
-  -H "X-Korvin-Key: YOUR_API_KEY" \
-  -d '{
-    "memory_limit": 46,
-    "max_tokens": 128000,
-    "memory_strategy": "summarize",
-    "summarizer_url": "http://localhost:4000/v1/chat/completions",
-    "summarizer_model": "deepseek-v4-flash"
-  }'
-```
+Security Design
+Threat model:
+Korvin is designed for single-operator self-hosted deployment. Primary threats and mitigations:
 
----
+Unauthorized dashboard access — Cloudflare Access OTP + API key on write endpoints
+Services exposed on public IP — all services bound to 127.0.0.1 only
+Secret leakage — /etc/korvin.env chmod 600, never committed; config.json gitignored
+Log data exposure — server-side sanitization strips stack traces and file paths
+Prompt injection — sanitizer.js blocks malicious patterns before reaching the LLM
+Destructive autonomous actions — confirmation gate requires explicit /confirm for all HIGH-risk commands
 
-## Security Design
+Privilege separation:
+The bot and dashboard both run as the korvin system user — not root. LiteLLM runs as root because it requires access to /root/litellm_config.yaml. Future versions will address this.
+Port security checklist:
+bashss -tlnp | grep -E "3002|4000"
+# Both must show 127.0.0.1 — never 0.0.0.0
+Never committed to git:
+config.json        # Telegram token, LiteLLM master key
+data/              # SQLite memory database
+logs/              # Runtime logs
+*.wav / *.ogg      # Voice recordings
+/etc/korvin.env    # All API keys
 
-### Threat model
-
-Korvin is designed for single-operator self-hosted deployment. The primary threats are:
-
-1. **Unauthorized dashboard access** — mitigated by Cloudflare Access + API key auth
-2. **Exposed services on public IP** — mitigated by binding all services to `127.0.0.1`
-3. **Secret leakage via config files** — mitigated by `.gitignore` on `config.json` and `data/`
-4. **Log data exposure** — mitigated by server-side sanitization of stack traces and file paths
-
-### What is never committed to git
-
-```
-config.json          # Telegram token, LiteLLM master key, summarizer config
-data/                # SQLite memory database
-logs/                # Runtime logs
-*.wav / *.ogg        # Voice recordings
-/etc/korvin.env      # Dashboard API key
-```
-
-### Port security checklist
-
-```bash
-# Verify all services are loopback-only
-ss -tlnp | grep -E "3002|4000"
-# Expected: 127.0.0.1 on both — never 0.0.0.0
-```
-
----
-
-## Model-Agnostic Design
-
-Korvin never hardcodes a model. Every LLM call goes through a configurable endpoint stored in `config.json`. This means:
-
-- Swap DeepSeek for Claude by editing one line
-- Run entirely offline with Ollama — no API costs, no internet required
-- Use a cheap fast model for summarization, expensive model for reasoning
-- Each install is independent — a team of ten can run ten different model stacks
-
-This is the same philosophy behind LiteLLM itself. Korvin extends it to the install level. The agent code never changes regardless of what model powers it. This is not an accident — it is a deliberate architectural constraint that makes Korvin future-proof by design.
-
----
-
-## Project Structure
-
-```
+Project Structure
 korvin/
 ├── src/
-│   ├── hermes/
-│   │   └── memory.py          # SQLite memory + strategy enforcement
-│   ├── dashboard/
-│   │   ├── main.py            # FastAPI endpoints
-│   │   └── static/
-│   │       └── index.html     # Dashboard UI
 │   ├── openclaw/
-│   │   └── gateway.js         # LLM gateway
-│   └── skills/
-│       ├── activity-log.js    # Activity logging
-│       └── research.js        # Web research skill
-├── data/                      # SQLite DB (gitignored)
-├── docs/                      # Extended documentation
-├── config.json                # Your config (gitignored)
-├── config.example.json        # Template (committed)
-├── package.json               # npm package definition
+│   │   ├── gateway.js          # LLM gateway, model switching
+│   │   └── telegram-bot.js     # Telegram integration, voice, command routing
+│   ├── commands/
+│   │   ├── scan.js             # /scan — VirusTotal + Lynis
+│   │   ├── patch.js            # /patch — LLM CVE research
+│   │   ├── compliance.js       # /compliance
+│   │   └── incident.js         # /incident
+│   ├── middleware/
+│   │   ├── confirmation-gate.js # /confirm guard for HIGH-risk actions
+│   │   ├── sanitizer.js        # Prompt injection blocker
+│   │   └── skill-contract.js   # Structured skill return types
+│   ├── security/
+│   │   ├── defender.js         # Content sanitization (wired)
+│   │   ├── sandbox.js          # Docker sandbox executor
+│   │   ├── threat-monitor.js   # OWASP/CVE monitoring (in development)
+│   │   └── auto-patcher.js     # Automated patch application (in development)
+│   ├── dashboard/
+│   │   ├── main.py             # FastAPI endpoints
+│   │   └── static/index.html   # Dashboard UI
+│   ├── hermes/
+│   │   └── memory.py           # SQLite memory + strategy enforcement
+│   ├── skills/
+│   │   ├── activity-log.js     # Activity logging
+│   │   └── research.js         # Web research skill
+│   └── voice/
+│       └── voice.py            # Kokoro TTS
+├── data/                       # SQLite DB, active_model.txt (gitignored)
+├── docs/                       # Extended documentation
+├── config.json                 # Your config (gitignored)
+├── config.example.json         # Template (committed)
+├── package.json
 └── README.md
-```
 
----
+Roadmap
 
-## Roadmap
+korvin init setup wizard via npm
+WhatsApp, Discord, Signal channels
+RAG over local documents
+threat-monitor.js — operational OWASP/CVE monitoring
+auto-patcher.js — automated patch recommendations
+Multi-agent orchestration
+Wake word detection via Porcupine
+Voz — bilingual TTS engine (XTTS v2)
 
-- [ ] `korvin init` setup wizard via npm
-- [ ] WhatsApp, Discord, Signal channels
-- [x] Summarize memory strategy (Phase 2 complete)
-- [ ] RAG over local documents
-- [ ] Multi-agent orchestration
-- [ ] Wake word detection ("Hey Korvin") via Porcupine
-- [ ] Voz — bilingual TTS engine (XTTS v2)
-- [ ] JARVIS V2 — full local AI stack
 
----
+Contributing
+See CONTRIBUTORS.md for guidelines.
+Attributions
+See ATTRIBUTIONS.md for third-party licenses.
+Security
+See SECURITY.md for responsible disclosure policy.
+License
+MIT — see LICENSE.md for full details.
 
-## Contributing
-
-See [CONTRIBUTORS.md](CONTRIBUTORS.md) for guidelines.
-
-## Attributions
-
-See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for third-party licenses.
-
-## Security
-
-See [SECURITY.md](SECURITY.md) for responsible disclosure policy.
-
-## License
-
-MIT — see [LICENSE.md](LICENSE.md) for full details.
-
----
-
-*Built by [NosisTech](https://nosistech.com) — Cloud Security · AI Governance · Honduras*
+Built by NosisTech — Cloud Security · AI Governance
