@@ -272,11 +272,12 @@ def _check_chat_rate_limit(session_id: str):
 
 class ChatRequest(BaseModel):
     message: str
-    chat_id: str = "dashboard-chat"
+    chat_id: Optional[str] = None
 
 @app.post("/api/chat", dependencies=[Depends(require_key)])
 def chat(body: ChatRequest):
-    _check_chat_rate_limit(body.chat_id)
+    chat_id = body.chat_id or os.environ.get("KORVIN_CHAT_ID", "dashboard-chat")
+    _check_chat_rate_limit(chat_id)
 
     messages = [{
         "role": "system",
@@ -292,7 +293,7 @@ def chat(body: ChatRequest):
             conn = sqlite3.connect(DB_PATH)
             rows = conn.execute(
                 "SELECT role, content FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT 20",
-                (body.chat_id,)
+                (chat_id,)
             ).fetchall()
             conn.close()
             for r in reversed(rows):
@@ -329,12 +330,28 @@ def chat(body: ChatRequest):
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.execute("INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)",
-                     (body.chat_id, "user", body.message, datetime.utcnow().isoformat()))
+                     (chat_id, "user", body.message, datetime.utcnow().isoformat()))
         conn.execute("INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)",
-                     (body.chat_id, "assistant", reply, datetime.utcnow().isoformat()))
+                     (chat_id, "assistant", reply, datetime.utcnow().isoformat()))
         conn.commit()
         conn.close()
     except Exception:
         pass
 
     return {"reply": reply}
+
+@app.get("/api/chat/history", dependencies=[Depends(require_key)])
+def chat_history(limit: int = 50):
+    chat_id = os.environ.get("KORVIN_CHAT_ID", "dashboard-chat")
+    if not os.path.exists(DB_PATH):
+        return {"messages": []}
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute(
+            "SELECT role, content, timestamp FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT ?",
+            (chat_id, limit)
+        ).fetchall()
+        conn.close()
+        return {"messages": [{"role": r[0], "content": r[1], "timestamp": r[2]} for r in reversed(rows)]}
+    except Exception:
+        return {"messages": []}
