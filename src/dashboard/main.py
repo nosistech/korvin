@@ -51,7 +51,7 @@ def system_info():
         return {"error": str(e)}
 
 @app.get("/api/memory/recent")
-def recent_memory(chat_id: str = "8023887825", limit: int = 20):
+def recent_memory(chat_id: str = "", limit: int = 20):
     if not os.path.exists(DB_PATH):
         return {"messages": [], "error": "No memory DB found"}
     try:
@@ -66,7 +66,7 @@ def recent_memory(chat_id: str = "8023887825", limit: int = 20):
         return {"messages": [], "error": str(e)}
 
 @app.get("/api/memory/context-window")
-def context_window(chat_id: str = "8023887825", limit: int = 10, max_tokens: int = 128000):
+def context_window(chat_id: str = "", limit: int = 10, max_tokens: int = 128000):
     if not os.path.exists(DB_PATH):
         return {"messages_used": 0, "messages_limit": limit, "tokens_estimate": 0, "max_tokens": max_tokens, "pct_messages": 0, "pct_tokens": 0, "status": "ok"}
     try:
@@ -206,7 +206,7 @@ def set_memory_limit(body: MemoryLimitRequest):
     return {"saved": True, "summarizer_url": body.summarizer_url, "summarizer_model": body.summarizer_model, "memory_limit": body.memory_limit, "max_tokens": body.max_tokens, "memory_strategy": body.memory_strategy}
 
 class PruneRequest(BaseModel):
-    chat_id: str = "8023887825"
+    chat_id: str = ""
 
 @app.post("/api/memory/prune", dependencies=[Depends(require_key)])
 def prune_memory(body: PruneRequest):
