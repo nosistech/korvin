@@ -139,8 +139,6 @@ bot.onText(/\/start|\/help/, async (msg) => {
     `\`/status\` — VPS health report\n` +
     `\`/scan [target]\` — Security scan (HIGH risk)\n` +
     `\`/patch <target>\` — Apply patch (HIGH risk)\n` +
-    `\`/compliance <framework>\` — Compliance audit (MEDIUM risk)\n` +
-    `\`/incident <severity> <description>\` — Log incident (MEDIUM risk)\n` +
     `\`/log\` — Recent activity\n` +
     `\`/pending\` — Pending confirmations\n` +
     `\`/help\` — this menu\n\n` +

@@ -34,7 +34,7 @@ def root():
 
 @app.get("/api/status")
 def status():
-    return {"korvin": "online", "version": "0.1.0", "sandbox": "docker", "memory": "sqlite"}
+    return {"korvin": "online", "version": "0.1.0", "memory": "sqlite"}
 
 @app.get("/api/system")
 def system_info():

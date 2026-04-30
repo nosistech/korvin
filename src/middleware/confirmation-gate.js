@@ -6,7 +6,6 @@
  *
  * Risk levels:
  *   HIGH   — requires confirmation (patch, scan, delete, exec, write)
- *   MEDIUM — warns but executes (compliance, incident report)
  *   LOW    — passes through immediately
  */
 
@@ -20,8 +19,6 @@ const RISK_MAP = {
   delete:     'HIGH',
   exec:       'HIGH',
   write:      'HIGH',
-  compliance: 'MEDIUM',
-  incident:   'MEDIUM',
   research:   'LOW',
   status:     'LOW',
   log:        'LOW',
