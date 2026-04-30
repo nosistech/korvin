@@ -1,5 +1,5 @@
 import os, sqlite3, subprocess, re, json, time
-from datetime import datetime
+from datetime import datetime, date
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -321,6 +321,50 @@ def get_models():
         })
     return {"models": models, "active": _read_active_model()}
 
+# ── Token Tracking ─────────────────────────────────────────────────────
+TOKEN_USAGE_PATH = "/home/korvin/korvin/data/token_usage.json"
+TOKEN_RATES_PATH = "/home/korvin/korvin/data/token_rates.json"
+
+DEFAULT_RATES = {
+    "deepseek-v4-pro": 0.27,
+    "deepseek-v4-flash": 0.07,
+    "gemini-flash": 0.15,
+    "ollama-qwen": 0.0,
+    "ollama-deepseek-coder": 0.0,
+}
+
+def _read_token_usage():
+    try:
+        with open(TOKEN_USAGE_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _add_token_usage(model: str, tokens: int):
+    today = date.today().isoformat()
+    usage = _read_token_usage()
+    if today not in usage:
+        usage[today] = {}
+    day = usage[today]
+    if model not in day:
+        day[model] = {"tokens": 0}
+    day[model]["tokens"] += tokens
+    day["total_tokens"] = day.get("total_tokens", 0) + tokens
+    with open(TOKEN_USAGE_PATH, "w") as f:
+        json.dump(usage, f)
+
+def _read_token_rates():
+    try:
+        with open(TOKEN_RATES_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return dict(DEFAULT_RATES)
+
+def _write_token_rates(rates: dict):
+    os.makedirs(os.path.dirname(TOKEN_RATES_PATH), exist_ok=True)
+    with open(TOKEN_RATES_PATH, "w") as f:
+        json.dump(rates, f)
+
 # ── Telegram forwarding ────────────────────────────────────────────────
 def _telegram_send(chat_id: str, text: str):
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -403,6 +447,14 @@ def chat(body: ChatRequest):
             return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
         data = resp.json()
         reply = data["choices"][0]["message"]["content"]
+        # Track token usage
+        usage = data.get("usage", {})
+        total_tokens = usage.get("total_tokens", 0)
+        if total_tokens:
+            try:
+                _add_token_usage("deepseek-v4-pro", total_tokens)
+            except Exception:
+                pass
     except Exception as e:
         return {"reply": f"Error: {str(e)}", "error": True}
 
@@ -417,7 +469,6 @@ def chat(body: ChatRequest):
     except Exception:
         pass
 
-    # Forward both messages to Telegram so the conversation appears there too
     _telegram_send(chat_id, body.message)
     _telegram_send(chat_id, reply)
 
@@ -438,3 +489,54 @@ def chat_history(limit: int = 50):
         return {"messages": [{"role": r[0], "content": r[1], "source": r[2] or "telegram", "timestamp": r[3]} for r in reversed(rows)]}
     except Exception:
         return {"messages": []}
+
+# ── Token Usage & Rates ────────────────────────────────────────────────
+
+@app.get("/api/token-usage")
+def token_usage():
+    usage = _read_token_usage()
+    rates = _read_token_rates()
+    today = date.today().isoformat()
+    today_data = usage.get(today, {})
+
+    total_tokens_today = today_data.get("total_tokens", 0)
+    cost_today = 0.0
+    for model, data in today_data.items():
+        if model == "total_tokens":
+            continue
+        rate = rates.get(model, 0)
+        cost_today += (data.get("tokens", 0) / 1_000_000) * rate
+
+    month_tokens = 0
+    month_cost = 0.0
+    for day_key, day_data in usage.items():
+        if day_key.startswith(today[:7]):
+            month_tokens += day_data.get("total_tokens", 0)
+            for model, data in day_data.items():
+                if model == "total_tokens":
+                    continue
+                rate = rates.get(model, 0)
+                month_cost += (data.get("tokens", 0) / 1_000_000) * rate
+
+    return {
+        "today": {
+            "tokens": total_tokens_today,
+            "cost": round(cost_today, 6)
+        },
+        "month": {
+            "tokens": month_tokens,
+            "cost": round(month_cost, 6)
+        }
+    }
+
+@app.get("/api/token-rates")
+def token_rates():
+    return {"rates": _read_token_rates()}
+
+class TokenRatesRequest(BaseModel):
+    rates: dict
+
+@app.post("/api/token-rates", dependencies=[Depends(require_key)])
+def save_token_rates(body: TokenRatesRequest):
+    _write_token_rates(body.rates)
+    return {"saved": True, "rates": body.rates}
