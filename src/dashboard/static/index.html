@@ -130,7 +130,7 @@
   <div class="card">
     <h3>Status</h3>
     <div class="status-row"><div class="dot green"></div>Agent running</div>
-    <div class="status-row"><div class="dot blue"></div>Model: deepseek-v4-pro via LiteLLM</div>
+    <div class="status-row"><div class="dot blue"></div>Model: <span id="home-model">deepseek-v4-pro</span> via LiteLLM</div>
     <div class="status-row"><div class="dot green"></div>Telegram: @NosisTechBot — active</div>
     <div class="status-row"><div class="dot green"></div>Voice: Whisper STT + Kokoro TTS (bm_lewis)</div>
     <div class="status-row"><div class="dot green"></div>Memory: SQLite — persistent</div>
@@ -257,7 +257,7 @@
     <div class="model-badge" id="active-model-badge">Loading...</div>
     <div class="model-switcher" id="model-switcher"></div>
     <div class="switch-feedback" id="switch-feedback"></div>
-    <p style="font-size:0.75rem;color:var(--text3);margin-top:12px">Switching restarts LiteLLM (~3s). Active commands retry automatically.</p>
+    <p style="font-size:0.75rem;color:var(--text3);margin-top:12px">Switching updates the active model instantly. The gateway picks up the change on the next message.</p>
   </div>
   <div class="card">
     <h3>Connected Channels</h3>
@@ -314,7 +314,7 @@ function showPage(id, btn) {
   btn.classList.add('active');
   clearInterval(autoRefreshTimer);
   if (id === 'home') {
-    loadSystem(); loadContextWindow('cw-home');
+    loadSystem(); loadActiveModelStatus(); loadContextWindow('cw-home');
     autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
   }
   if (id === 'memory') { loadMemoryConfig(); loadMemory(); loadContextWindow('cw-memory'); }
@@ -347,6 +347,16 @@ async function loadSystem() {
       barDisk.className = 'bar ' + (diskPct >= 80 ? 'critical' : diskPct >= 60 ? 'warning' : 'ok');
     }
   } catch(e) { console.error('System load error:', e); }
+}
+
+// ── Active Model Status (for Home page) ─────────────────────────────
+async function loadActiveModelStatus() {
+  try {
+    const r = await fetch('/api/active-model');
+    const d = await r.json();
+    const el = document.getElementById('home-model');
+    if (el) el.textContent = d.active_model;
+  } catch(e) { /* ignore */ }
 }
 
 // ── Context Window ─────────────────────────────────────────────────
@@ -603,7 +613,7 @@ async function switchModel(slug, btn) {
   const buttons = document.querySelectorAll('.model-btn');
   const label = modelList.find(m => m.slug === slug);
   const name = label ? label.label : slug;
-  if (!confirm(`Switch to ${name}? LiteLLM will restart (~3s).`)) return;
+  if (!confirm(`Switch to ${name}?`)) return;
   buttons.forEach(b => b.disabled = true);
   fb.textContent = `⏳ Switching to ${name}…`;
   fb.className = 'switch-feedback loading';
@@ -634,6 +644,7 @@ async function switchModel(slug, btn) {
 
 // ── Boot ───────────────────────────────────────────────────────────
 loadSystem();
+loadActiveModelStatus();
 loadContextWindow('cw-home');
 autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
 </script>
