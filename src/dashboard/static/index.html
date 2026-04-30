@@ -150,6 +150,16 @@
     <div class="status-row"><div class="dot green"></div>Voice: Whisper STT + Kokoro TTS (bm_lewis)</div>
     <div class="status-row"><div class="dot green"></div>Memory: SQLite — persistent</div>
   </div>
+
+    <div class="card">
+    <h3>System Health <button class="refresh-btn" onclick="loadHealth()">↻ Refresh</button></h3>
+    <div class="status-row"><div class="dot" id="health-bot-dot"></div>Bot: <span id="health-bot">—</span></div>
+    <div class="status-row"><div class="dot" id="health-litellm-dot"></div>LiteLLM: <span id="health-litellm">—</span></div>
+    <div class="status-row"><div class="dot" id="health-memory-dot"></div>Memory: <span id="health-memory">—</span></div>
+    <div class="status-row"><div class="dot" id="health-backup-dot"></div>Backup: <span id="health-backup">—</span></div>
+    <div class="status-row"><div class="dot" id="health-overall-dot"></div>Overall: <span id="health-overall">—</span></div>
+  </div>
+
   <div class="card">
     <h3>System Resources <button class="refresh-btn" onclick="loadSystem()">↻ Refresh</button></h3>
     <div class="stat-grid">
@@ -328,7 +338,10 @@ function showPage(id, btn) {
   btn.classList.add('active');
   clearInterval(autoRefreshTimer);
   clearInterval(chatRefreshTimer);
-  if (id === 'home') {
+    if (id === 'home') {
+    loadSystem(); loadActiveModelStatus(); loadHealth(); loadContextWindow('cw-home');
+    autoRefreshTimer = setInterval(() => { loadSystem(); loadHealth(); loadContextWindow('cw-home'); }, 10000);
+  } {
     loadSystem(); loadActiveModelStatus(); loadContextWindow('cw-home');
     autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
   }
@@ -367,6 +380,32 @@ async function loadSystem() {
       barDisk.className = 'bar ' + (diskPct >= 80 ? 'critical' : diskPct >= 60 ? 'warning' : 'ok');
     }
   } catch(e) { console.error('System load error:', e); }
+}
+
+// ── Health Check ────────────────────────────────────────────────────
+async function loadHealth() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+
+    const botOk = d.bot === 'running';
+    document.getElementById('health-bot').textContent = d.bot;
+    document.getElementById('health-bot-dot').className = 'dot ' + (botOk ? 'green' : 'red');
+
+    const litellmOk = d.litellm === 'reachable';
+    document.getElementById('health-litellm').textContent = d.litellm;
+    document.getElementById('health-litellm-dot').className = 'dot ' + (litellmOk ? 'green' : 'red');
+
+    const backupOk = d.backup_hours !== null && d.backup_hours < 7;
+    document.getElementById('health-memory').textContent = d.memory_total + ' messages';
+    document.getElementById('health-memory-dot').className = 'dot green';
+    document.getElementById('health-backup').textContent = d.backup_last ? d.backup_last + ' (' + (d.backup_hours || '?') + 'h ago)' : 'none';
+    document.getElementById('health-backup-dot').className = 'dot ' + (backupOk ? 'green' : 'yellow');
+
+    const overallOk = d.status === 'ok';
+    document.getElementById('health-overall').textContent = d.status;
+    document.getElementById('health-overall-dot').className = 'dot ' + (overallOk ? 'green' : 'red');
+  } catch(e) { /* ignore */ }
 }
 
 // ── Active Model Status (for Home page) ─────────────────────────────
