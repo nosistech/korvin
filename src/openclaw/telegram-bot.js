@@ -37,6 +37,9 @@ if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR);
 // ── Grill Mode state ──────────────────────────────────────────────────────────
 const pendingGrills = new Map();
 
+// ── Brief Mode state ─────────────────────────────────────────────────────────
+let briefMode = false;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function downloadFile(url, dest) {
@@ -150,6 +153,7 @@ bot.onText(/\/start|\/help/, async (msg) => {
     `\`/scan [target]\` — Security scan (HIGH risk)\n` +
     `\`/patch <target>\` — Apply patch (HIGH risk)\n` +
     `\`/grill <topic>\` — Clarifying questions before research\n` +
+    `\`/brief\` — Toggle concise mode (one-sentence answers)\n` +
     `\`/log\` — Recent activity\n` +
     `\`/pending\` — Pending confirmations\n` +
     `\`/help\` — this menu\n\n` +
@@ -202,6 +206,13 @@ bot.on('message', async (msg) => {
   const text = msg.text;
   if (!text || msg.voice) return;
 
+  // ── Brief mode toggle ──
+  if (text.toLowerCase().startsWith('/brief')) {
+    briefMode = !briefMode;
+    await bot.sendMessage(chatId, briefMode ? '✅ Brief mode ON — one-sentence answers.' : '✅ Brief mode OFF — normal replies.');
+    return;
+  }
+
   // ── Grill Mode — ask clarifying questions before research ──
   if (text.toLowerCase().startsWith('/grill ') || text.toLowerCase().startsWith('grill ')) {
     const topic = text.replace(/^\/?grill\s+/i, '').trim();
@@ -215,7 +226,7 @@ bot.on('message', async (msg) => {
     return;
   }
 
-    // ── Pending grill answers — user replied to earlier grill questions ──
+  // ── Pending grill answers — user replied to earlier grill questions ──
   if (pendingGrills.has(chatId)) {
     const grill = pendingGrills.get(chatId);
     pendingGrills.delete(chatId);
@@ -256,7 +267,10 @@ bot.on('message', async (msg) => {
   }
 
   try {
-    const reply = cleanReply(await sendMessage(text, String(chatId)));
+    const msgToSend = briefMode
+      ? `[BRIEF MODE: Answer in one sentence, no preamble, no filler. Just the essential information.] ${text}`
+      : text;
+    const reply = cleanReply(await sendMessage(msgToSend, String(chatId)));
     await bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
   } catch (err) {
     await bot.sendMessage(chatId, 'Error: ' + err.message);
