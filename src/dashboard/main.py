@@ -256,6 +256,20 @@ def get_models():
         })
     return {"models": models, "active": _read_active_model()}
 
+# ── Telegram forwarding ────────────────────────────────────────────────
+def _telegram_send(chat_id: str, text: str):
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text},
+            timeout=5
+        )
+    except Exception:
+        pass
+
 # ── Chat ────────────────────────────────────────────────────────────────
 CHAT_RATE_LIMIT_WINDOW = 60          # 1 minute
 CHAT_RATE_LIMIT_MAX    = 10          # max requests per window
@@ -337,6 +351,10 @@ def chat(body: ChatRequest):
         conn.close()
     except Exception:
         pass
+
+    # Forward both messages to Telegram so the conversation appears there too
+    _telegram_send(chat_id, body.message)
+    _telegram_send(chat_id, reply)
 
     return {"reply": reply}
 
