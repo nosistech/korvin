@@ -488,7 +488,6 @@ korvin/
 - [ ] `auto-patcher.js` — automated patch recommendations
 - [ ] Multi-agent orchestration
 - [ ] Wake word detection via Porcupine
-- [ ] Voz — bilingual TTS engine (XTTS v2)
 
 ---
 
