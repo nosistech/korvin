@@ -5,6 +5,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
+from collections import defaultdict
+import requests
 
 app = FastAPI(title="Korvin Dashboard")
 app.mount("/static", StaticFiles(directory="/home/korvin/korvin/src/dashboard/static"), name="static")
@@ -242,6 +244,7 @@ def switch_model(body: SwitchModelRequest):
     except Exception as e:
         _write_active_model(previous)
         raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}. Rolled back to {previous}.")
+
 @app.get("/api/models")
 def get_models():
     models = []
@@ -252,3 +255,86 @@ def get_models():
             "model_string": model_string
         })
     return {"models": models, "active": _read_active_model()}
+
+# ── Chat ────────────────────────────────────────────────────────────────
+CHAT_RATE_LIMIT_WINDOW = 60          # 1 minute
+CHAT_RATE_LIMIT_MAX    = 10          # max requests per window
+_chat_ratelimit: dict[str, list[float]] = defaultdict(list)
+
+def _check_chat_rate_limit(session_id: str):
+    now = time.time()
+    window = CHAT_RATE_LIMIT_WINDOW
+    timestamps = _chat_ratelimit[session_id]
+    _chat_ratelimit[session_id] = [t for t in timestamps if now - t < window]
+    if len(_chat_ratelimit[session_id]) >= CHAT_RATE_LIMIT_MAX:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again in a minute.")
+    _chat_ratelimit[session_id].append(now)
+
+class ChatRequest(BaseModel):
+    message: str
+    chat_id: str = "dashboard-chat"
+
+@app.post("/api/chat", dependencies=[Depends(require_key)])
+def chat(body: ChatRequest):
+    _check_chat_rate_limit(body.chat_id)
+
+    messages = [{
+        "role": "system",
+        "content": (
+            "You are Korvin, a self-hosted personal AI agent. "
+            "You are helpful, concise, and warm. "
+            "Respond in English. You are speaking through a dashboard chat interface."
+        )
+    }]
+
+    if os.path.exists(DB_PATH):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            rows = conn.execute(
+                "SELECT role, content FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT 20",
+                (body.chat_id,)
+            ).fetchall()
+            conn.close()
+            for r in reversed(rows):
+                messages.append({"role": r[0], "content": r[1]})
+        except Exception:
+            pass
+
+    messages.append({"role": "user", "content": body.message})
+
+    litellm_url = "http://127.0.0.1:4000/v1/chat/completions"
+    litellm_key = os.environ.get("LITELLM_MASTER_KEY", "")
+    try:
+        resp = requests.post(
+            litellm_url,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {litellm_key}"
+            },
+            json={
+                "model": "deepseek-v4-pro",
+                "messages": messages,
+                "temperature": 0.7,
+                "stream": False
+            },
+            timeout=30
+        )
+        if not resp.ok:
+            return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
+        data = resp.json()
+        reply = data["choices"][0]["message"]["content"]
+    except Exception as e:
+        return {"reply": f"Error: {str(e)}", "error": True}
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)",
+                     (body.chat_id, "user", body.message, datetime.utcnow().isoformat()))
+        conn.execute("INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)",
+                     (body.chat_id, "assistant", reply, datetime.utcnow().isoformat()))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    return {"reply": reply}
