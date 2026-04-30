@@ -201,17 +201,10 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
   if (!text || msg.voice) return;
-  if (text.startsWith('/')) return;
-
-  const sanity = sanitizeInput(text);
-  if (sanity.safe === false) {
-    await bot.sendMessage(chatId, 'Input rejected: ' + sanity.reason);
-    return;
-  }
 
   // ── Grill Mode — ask clarifying questions before research ──
-  if (sanity.value.toLowerCase().startsWith('/grill ') || sanity.value.toLowerCase().startsWith('grill ')) {
-    const topic = sanity.value.replace(/^\/?grill\s+/i, '').trim();
+  if (text.toLowerCase().startsWith('/grill ') || text.toLowerCase().startsWith('grill ')) {
+    const topic = text.replace(/^\/?grill\s+/i, '').trim();
     try {
       const questions = await generateGrillQuestions(topic);
       pendingGrills.set(chatId, { topic, questions });
@@ -228,13 +221,21 @@ bot.on('message', async (msg) => {
     pendingGrills.delete(chatId);
     await bot.sendMessage(chatId, `🔍 *Researching "${grill.topic}" with your answers…*`, { parse_mode: 'Markdown' });
     try {
-      const prompt = `You are Korvin. The user wants to research "${grill.topic}". Here are the clarifying questions you asked and the user's answers:\n\n${grill.questions}\n\nUser's answers:\n${sanity.value}\n\nNow perform the research based on this context. Provide a concise report.`;
+      const prompt = `You are Korvin. The user wants to research "${grill.topic}". Here are the clarifying questions you asked and the user's answers:\n\n${grill.questions}\n\nUser's answers:\n${text}\n\nNow perform the research based on this context. Provide a concise report.`;
       const summary = await sendMessage(prompt, chatId);
       await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
       try { logActivity('grill_research', grill.topic, summary.substring(0, 200)); } catch (_) {}
     } catch (err) {
       await bot.sendMessage(chatId, `Research error: ${err.message}`);
     }
+    return;
+  }
+
+  if (text.startsWith('/')) return;
+
+  const sanity = sanitizeInput(text);
+  if (sanity.safe === false) {
+    await bot.sendMessage(chatId, 'Input rejected: ' + sanity.reason);
     return;
   }
 
