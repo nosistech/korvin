@@ -230,23 +230,13 @@ def switch_model(body: SwitchModelRequest):
     slug = body.model.strip()
     if slug not in MODEL_WHITELIST:
         raise HTTPException(status_code=400, detail=f"Model '{slug}' not in whitelist")
-    previous = _read_active_model()
-    try:
-        _write_active_model(slug)
-        subprocess.run(["systemctl", "restart", "litellm"], check=True, timeout=45)
-        time.sleep(12)
-        import urllib.request
-        try:
-            req = urllib.request.Request("http://localhost:4000/health", headers={"Authorization": "Bearer nosistech-proxy-2026"})
-            urllib.request.urlopen(req, timeout=10)
-        except Exception:
-            raise Exception("LiteLLM did not come back healthy")
-        return {
-            "success": True,
-            "active_model": slug,
-            "model_string": MODEL_WHITELIST[slug],
-            "switched_at": datetime.utcnow().isoformat()
-        }
+    _write_active_model(slug)
+    return {
+        "success": True,
+        "active_model": slug,
+        "model_string": MODEL_WHITELIST[slug],
+        "switched_at": datetime.utcnow().isoformat()
+    }
     except Exception as e:
         _write_active_model(previous)
         raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}. Rolled back to {previous}.")
