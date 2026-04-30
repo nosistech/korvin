@@ -215,19 +215,19 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  // ── Pending grill answers — user replied to earlier grill questions ──
-  if (      const maxLen = 3800;
-      const finalReply = summary.length > maxLen
-        ? summary.substring(0, maxLen) + '\n\n_📋 Research was truncated. Ask me to elaborate on any section._'
-        : summary;
-      await bot.sendMessage(chatId, finalReply, { parse_mode: 'Markdown' });) {
+    // ── Pending grill answers — user replied to earlier grill questions ──
+  if (pendingGrills.has(chatId)) {
     const grill = pendingGrills.get(chatId);
     pendingGrills.delete(chatId);
     await bot.sendMessage(chatId, `🔍 *Researching "${grill.topic}" with your answers…*`, { parse_mode: 'Markdown' });
     try {
       const prompt = `You are Korvin. The user wants to research "${grill.topic}". Here are the clarifying questions you asked and the user's answers:\n\n${grill.questions}\n\nUser's answers:\n${text}\n\nNow perform the research based on this context. Provide a concise report.`;
       const summary = await sendMessage(prompt, chatId);
-      await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
+      const maxLen = 3800;
+      const finalReply = summary.length > maxLen
+        ? summary.substring(0, maxLen) + '\n\n_📋 Research was truncated. Ask me to elaborate on any section._'
+        : summary;
+      await bot.sendMessage(chatId, finalReply, { parse_mode: 'Markdown' });
       try { logActivity('grill_research', grill.topic, summary.substring(0, 200)); } catch (_) {}
     } catch (err) {
       await bot.sendMessage(chatId, `Research error: ${err.message}`);
