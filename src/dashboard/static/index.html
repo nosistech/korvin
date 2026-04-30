@@ -114,6 +114,7 @@
   <h1>Korvin Dashboard</h1>
   <nav>
     <button class="active" onclick="showPage('home',this)">Home</button>
+    <button onclick="showPage('chat',this)">Chat</button>
     <button onclick="showPage('skills',this)">Skills</button>
     <button onclick="showPage('memory',this)">Memory</button>
     <button onclick="showPage('security',this)">Security</button>
@@ -123,6 +124,20 @@
   </nav>
 </header>
 <main>
+
+<!-- CHAT -->
+<div id="page-chat" class="page">
+  <h2>Chat</h2>
+  <div class="card" style="display:flex;flex-direction:column;height:70vh;min-height:400px;padding:0;">
+    <div class="msg-list" id="chat-messages" style="flex:1;padding:16px;overflow-y:auto;">
+      <div style="color:var(--text3);font-size:0.85rem">Send a message to start chatting with Korvin.</div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:12px;display:flex;gap:8px;">
+      <input class="search-input" id="chat-input" type="text" placeholder="Type a message…" style="margin:0;flex:1;" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="apply-btn" id="chat-send-btn" onclick="sendChat()" style="margin:0;white-space:nowrap;">Send</button>
+    </div>
+  </div>
+</div>
 
 <!-- HOME -->
 <div id="page-home" class="page active">
@@ -289,6 +304,8 @@ let killActive = false;
 let cwLimit = 46;
 let configMaxTokens = 128000;
 let autoRefreshTimer = null;
+let chatRequestCount = 0;
+const CHAT_RATE_LIMIT = 10;
 
 // ── Theme ──────────────────────────────────────────────────────────
 function applyTheme(light) {
@@ -317,6 +334,7 @@ function showPage(id, btn) {
   if (id === 'logs') loadLogs();
   if (id === 'security') loadKillswitch();
   if (id === 'settings') loadModels();
+  if (id === 'chat') chatRequestCount = 0;
 }
 
 // ── System ─────────────────────────────────────────────────────────
@@ -636,6 +654,56 @@ async function switchModel(slug, btn) {
     fb.className = 'switch-feedback err';
   }
   buttons.forEach(b => b.disabled = false);
+}
+
+// ── Chat ────────────────────────────────────────────────────────────
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const btn   = document.getElementById('chat-send-btn');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  chatRequestCount++;
+  if (chatRequestCount > CHAT_RATE_LIMIT) {
+    appendChatMessage('system', 'Rate limit reached. Please wait a minute.');
+    return;
+  }
+
+  input.value = '';
+  btn.disabled = true;
+
+  appendChatMessage('user', msg);
+
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({ message: msg })
+    });
+    const d = await r.json();
+
+    if (d.reply) {
+      appendChatMessage('assistant', d.reply);
+    } else {
+      appendChatMessage('system', 'No response from Korvin.');
+    }
+  } catch(e) {
+    appendChatMessage('system', 'Error: ' + e.message);
+  }
+  btn.disabled = false;
+}
+
+function appendChatMessage(role, content) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const roleLabels = { user: 'YOU', assistant: 'KORVIN', system: 'SYSTEM' };
+  div.innerHTML = `<div class="msg-role">${roleLabels[role] || role.toUpperCase()}</div>${escapeHtml(content)}`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
+  const placeholder = container.querySelector('div[style]');
+  if (placeholder) placeholder.remove();
 }
 
 // ── Boot ───────────────────────────────────────────────────────────
