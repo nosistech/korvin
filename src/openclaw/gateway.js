@@ -42,6 +42,25 @@ function saveMessage(chatId, role, content) {
   }
 }
 
+function trackTokenUsage(model, tokens) {
+  try {
+    const file = '/home/korvin/korvin/data/token_usage.json';
+    let usage = {};
+    if (fs.existsSync(file)) {
+      usage = JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
+    const today = new Date().toISOString().split('T')[0];
+    if (!usage[today]) usage[today] = {};
+    const day = usage[today];
+    if (!day[model]) day[model] = { tokens: 0 };
+    day[model].tokens += tokens;
+    day.total_tokens = (day.total_tokens || 0) + tokens;
+    fs.writeFileSync(file, JSON.stringify(usage));
+  } catch(e) {
+    // silently ignore tracking errors
+  }
+}
+
 async function sendMessage(userMessage, chatId = 'default') {
   const check = inputSanitize(userMessage);
   if (!check.safe) throw new Error(`Input blocked: ${check.reason}`);
@@ -72,6 +91,12 @@ async function sendMessage(userMessage, chatId = 'default') {
   if (!response.ok) throw new Error(`LiteLLM error: ${response.status} ${response.statusText}`);
   const data = await response.json();
   const reply = data.choices[0].message.content;
+
+  // Track Telegram token usage
+  const usage = data.usage;
+  if (usage && usage.total_tokens) {
+    trackTokenUsage(getActiveModel(), usage.total_tokens);
+  }
   saveMessage(chatId, 'user', safeMessage);
   saveMessage(chatId, 'assistant', reply);
   return reply;
