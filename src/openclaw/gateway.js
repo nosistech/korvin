@@ -8,7 +8,8 @@ function getActiveModel() {
     return 'deepseek-v4-pro';
   }
 }
-const API_KEY = 'nosistech-proxy-2026';
+const API_KEY = process.env.LITELLM_MASTER_KEY;
+if (!API_KEY) throw new Error('LITELLM_MASTER_KEY not set in /etc/korvin.env');
 const { sanitize: defendSanitize } = require('../security/defender');
 const { sanitize: inputSanitize } = require('../middleware/sanitizer');
 const { execSync } = require('child_process');
