@@ -329,10 +329,10 @@ def chat(body: ChatRequest):
 
     try:
         conn = sqlite3.connect(DB_PATH)
-        conn.execute("INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)",
-                     (chat_id, "user", body.message, datetime.utcnow().isoformat()))
-        conn.execute("INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)",
-                     (chat_id, "assistant", reply, datetime.utcnow().isoformat()))
+        conn.execute("INSERT INTO messages (chat_id, role, content, source, timestamp) VALUES (?,?,?,?,?)",
+                     (chat_id, "user", body.message, "dashboard", datetime.utcnow().isoformat()))
+        conn.execute("INSERT INTO messages (chat_id, role, content, source, timestamp) VALUES (?,?,?,?,?)",
+                     (chat_id, "assistant", reply, "dashboard", datetime.utcnow().isoformat()))
         conn.commit()
         conn.close()
     except Exception:
@@ -348,10 +348,10 @@ def chat_history(limit: int = 50):
     try:
         conn = sqlite3.connect(DB_PATH)
         rows = conn.execute(
-            "SELECT role, content, timestamp FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT ?",
+            "SELECT role, content, source, timestamp FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT ?",
             (chat_id, limit)
         ).fetchall()
         conn.close()
-        return {"messages": [{"role": r[0], "content": r[1], "timestamp": r[2]} for r in reversed(rows)]}
+        return {"messages": [{"role": r[0], "content": r[1], "source": r[2] or "telegram", "timestamp": r[3]} for r in reversed(rows)]}
     except Exception:
         return {"messages": []}

@@ -19,8 +19,14 @@ def _conn():
         chat_id TEXT NOT NULL,
         role TEXT NOT NULL,
         content TEXT NOT NULL,
+        source TEXT,
         timestamp TEXT NOT NULL
     )''')
+    # Add source column if upgrading from an older schema
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN source TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     c.commit()
     return c
 
@@ -97,14 +103,14 @@ def _enforce_summarize(c, chat_id, limit, config):
     except Exception:
         return _enforce_sliding_window(c, chat_id, limit)
 
-def save(chat_id, role, content):
+def save(chat_id, role, content, source=None):
     config = _load_config()
     strategy = config.get('memory_strategy', 'sliding_window')
     limit = config.get('memory_limit', 100)
     c = _conn()
     c.execute(
-        'INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?,?,?,?)',
-        (str(chat_id), role, content, datetime.datetime.now(datetime.timezone.utc).isoformat())
+        'INSERT INTO messages (chat_id, role, content, source, timestamp) VALUES (?,?,?,?,?)',
+        (str(chat_id), role, content, source, datetime.datetime.now(datetime.timezone.utc).isoformat())
     )
     c.commit()
     if strategy == 'sliding_window':
@@ -126,11 +132,11 @@ def save(chat_id, role, content):
 def get_history(chat_id, limit=10):
     c = _conn()
     rows = c.execute(
-        'SELECT role, content FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT ?',
+        'SELECT role, content, source FROM messages WHERE chat_id=? ORDER BY id DESC LIMIT ?',
         (str(chat_id), limit)
     ).fetchall()
     c.close()
-    return [{'role': r[0], 'content': r[1]} for r in reversed(rows)]
+    return [{'role': r[0], 'content': r[1], 'source': r[2]} for r in reversed(rows)]
 
 def prune(chat_id, limit):
     c = _conn()

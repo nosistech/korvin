@@ -334,7 +334,7 @@ function showPage(id, btn) {
   if (id === 'logs') loadLogs();
   if (id === 'security') loadKillswitch();
   if (id === 'settings') loadModels();
-  if (id === 'chat') chatRequestCount = 0;
+  if (id === 'chat') { chatRequestCount = 0; loadChatHistory(); }
 }
 
 // ── System ─────────────────────────────────────────────────────────
@@ -657,6 +657,21 @@ async function switchModel(slug, btn) {
 }
 
 // ── Chat ────────────────────────────────────────────────────────────
+async function loadChatHistory() {
+  const container = document.getElementById('chat-messages');
+  try {
+    const r = await fetch('/api/chat/history?limit=50', { headers: AUTH });
+    if (r.status === 403) return;
+    const d = await r.json();
+    if (d.messages && d.messages.length > 0) {
+      container.innerHTML = '';
+      d.messages.forEach(m => {
+        appendChatMessage(m.role, m.content, m.source);
+      });
+    }
+  } catch(e) { /* ignore */ }
+}
+
 async function sendChat() {
   const input = document.getElementById('chat-input');
   const btn   = document.getElementById('chat-send-btn');
@@ -672,7 +687,7 @@ async function sendChat() {
   input.value = '';
   btn.disabled = true;
 
-  appendChatMessage('user', msg);
+  appendChatMessage('user', msg, 'dashboard');
 
   try {
     const r = await fetch('/api/chat', {
@@ -683,7 +698,7 @@ async function sendChat() {
     const d = await r.json();
 
     if (d.reply) {
-      appendChatMessage('assistant', d.reply);
+      appendChatMessage('assistant', d.reply, 'dashboard');
     } else {
       appendChatMessage('system', 'No response from Korvin.');
     }
@@ -693,12 +708,13 @@ async function sendChat() {
   btn.disabled = false;
 }
 
-function appendChatMessage(role, content) {
+function appendChatMessage(role, content, source = null) {
   const container = document.getElementById('chat-messages');
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   const roleLabels = { user: 'YOU', assistant: 'KORVIN', system: 'SYSTEM' };
-  div.innerHTML = `<div class="msg-role">${roleLabels[role] || role.toUpperCase()}</div>${escapeHtml(content)}`;
+  const sourceEmoji = source === 'dashboard' ? ' 💻' : source === 'telegram' ? ' 📱' : '';
+  div.innerHTML = `<div class="msg-role">${roleLabels[role] || role.toUpperCase()}${sourceEmoji}</div>${escapeHtml(content)}`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 
