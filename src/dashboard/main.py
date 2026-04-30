@@ -38,6 +38,66 @@ def root():
 def status():
     return {"korvin": "online", "version": "0.1.0", "memory": "sqlite"}
 
+@app.get("/api/health")
+def health_check():
+    health = {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "bot": "unknown",
+        "litellm": "unknown",
+        "memory_total": 0,
+        "last_activity": None,
+        "backup_last": None,
+        "backup_hours": None,
+    }
+
+    # Bot status (systemd)
+    try:
+        r = subprocess.run(["systemctl", "is-active", "korvin"], capture_output=True, text=True, timeout=3)
+        health["bot"] = "running" if r.stdout.strip() == "active" else "stopped"
+    except Exception:
+        pass
+
+    # LiteLLM proxy
+    try:
+        key = os.environ.get("LITELLM_MASTER_KEY", "")
+        resp = requests.get("http://127.0.0.1:4000/health",
+                           headers={"Authorization": f"Bearer {key}"}, timeout=3)
+        health["litellm"] = "reachable" if resp.status_code == 200 else "error"
+    except Exception:
+        health["litellm"] = "unreachable"
+
+    # Memory database
+    if os.path.exists(DB_PATH):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            count = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+            last = conn.execute("SELECT MAX(timestamp) FROM messages").fetchone()[0]
+            health["memory_total"] = count
+            health["last_activity"] = last
+            conn.close()
+        except Exception:
+            pass
+
+    # Backup age
+    backup_dir = "/home/korvin/.backup-repo/snapshots"
+    if os.path.exists(backup_dir):
+        try:
+            dirs = sorted([d for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))])
+            if dirs:
+                health["backup_last"] = dirs[-1]
+                last_ts = dirs[-1].replace("_", "T", 1).replace("_", "-", 1).replace("_", ":", 1).replace("_", ":")
+                age = datetime.utcnow() - datetime.fromisoformat(last_ts)
+                health["backup_hours"] = round(age.total_seconds() / 3600, 1)
+        except Exception:
+            pass
+
+    # Overall status
+    if health["bot"] != "running" or health["litellm"] == "unreachable":
+        health["status"] = "degraded"
+
+    return health
+
 @app.get("/api/system")
 def system_info():
     try:
