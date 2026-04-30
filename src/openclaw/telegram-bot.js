@@ -98,6 +98,11 @@ function cleanup(...files) {
   }
 }
 
+function formatError(action, error) {
+  const reason = error.message || 'an unexpected error occurred';
+  return `Couldn't ${action} because ${reason}.`;
+}
+
 // ── Grill Mode ────────────────────────────────────────────────────────────────
 
 async function generateGrillQuestions(topic) {
@@ -221,7 +226,7 @@ bot.on('message', async (msg) => {
       pendingGrills.set(chatId, { topic, questions });
       await bot.sendMessage(chatId, `🔍 *Grill Mode — ${topic}*\n\n${questions}\n\n_Reply with your answers to proceed with the research._`, { parse_mode: 'Markdown' });
     } catch (err) {
-      await bot.sendMessage(chatId, `Grill error: ${err.message}`);
+      await bot.sendMessage(chatId, formatError('generate questions for that topic', err));
     }
     return;
   }
@@ -241,7 +246,7 @@ bot.on('message', async (msg) => {
       await bot.sendMessage(chatId, finalReply, { parse_mode: 'Markdown' });
       try { logActivity('grill_research', grill.topic, summary.substring(0, 200)); } catch (_) {}
     } catch (err) {
-      await bot.sendMessage(chatId, `Research error: ${err.message}`);
+      await bot.sendMessage(chatId, formatError('complete the research', err));
     }
     return;
   }
@@ -261,7 +266,7 @@ bot.on('message', async (msg) => {
       const summary = await getResearchSummary(topic);
       await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
     } catch (err) {
-      await bot.sendMessage(chatId, `Research error: ${err.message}`);
+      await bot.sendMessage(chatId, formatError('complete the research', err));
     }
     return;
   }
@@ -273,7 +278,7 @@ bot.on('message', async (msg) => {
     const reply = cleanReply(await sendMessage(msgToSend, String(chatId)));
     await bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
   } catch (err) {
-    await bot.sendMessage(chatId, 'Error: ' + err.message);
+    await bot.sendMessage(chatId, formatError('process your message', err));
   }
 });
 
@@ -308,7 +313,7 @@ bot.on('voice', async (msg) => {
         await generateSpeech(summary, replyWav);
         await bot.sendVoice(chatId, replyWav);
       } catch (err) {
-        await bot.sendMessage(chatId, `Research error: ${err.message}`);
+        await bot.sendMessage(chatId, formatError('complete the research', err));
       }
       cleanup(oggPath, wavPath, replyWav);
       return;
@@ -321,7 +326,7 @@ bot.on('voice', async (msg) => {
 
   } catch (err) {
     console.error('Voice error:', err.message);
-    await bot.sendMessage(chatId, 'Voice error: ' + err.message);
+    await bot.sendMessage(chatId, formatError('process your voice message', err));
   } finally {
     cleanup(oggPath, wavPath, replyWav);
   }
