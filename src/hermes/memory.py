@@ -85,7 +85,9 @@ def _enforce_summarize(c, chat_id, limit, config):
         return 0
     batch_size = max(1, limit // 2)
     batch = rows[:batch_size]
-    messages_to_summarize = [{'role': r[1], 'content': r[2]} for r in batch]
+    messages_to_summarize = [{'role': r[1], 'content': r[2]} for r in batch if not r[2].startswith('[SUMMARY]')]
+    if not messages_to_summarize:
+        return _enforce_sliding_window(c, chat_id, limit)
     try:
         summary = _call_summarizer(messages_to_summarize, config)
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
