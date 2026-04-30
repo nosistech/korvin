@@ -23,8 +23,6 @@ const { logActivity, getLogSummary } = require('../skills/activity-log');
 // ── Commands (Phase B) ────────────────────────────────────────────────────────
 const { registerPatch } = require('../commands/patch');
 const { registerScan } = require('../commands/scan');
-const { registerCompliance } = require('../commands/compliance');
-const { registerIncident } = require('../commands/incident');
 
 // ── Dashboard (Phase B) ───────────────────────────────────────────────────────
 const { startDashboard } = require('../dashboard-api/server');
@@ -187,9 +185,6 @@ bot.onText(/\/pending/, (msg) => {
 const commandDeps = { confirmationGate, logActivity };
 registerPatch(bot, commandDeps);
 registerScan(bot, commandDeps);
-registerCompliance(bot, commandDeps);
-registerIncident(bot, commandDeps);
-
 // ── Text Handler ──────────────────────────────────────────────────────────────
 
 bot.on('message', async (msg) => {
