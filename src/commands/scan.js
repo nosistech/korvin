@@ -1,5 +1,5 @@
 // src/commands/scan.js
-// /scan <target> — VirusTotal lookup or system audit
+// /scan <target> — VirusTotal lookup or system audit (reads weekly lynis report)
 'use strict';
 
 function registerScan(bot, deps) {
@@ -8,7 +8,7 @@ function registerScan(bot, deps) {
   bot.onText(/\/scan(?:\s+(.+))?/, async (msg, match) => {
     const chatId = String(msg.chat.id);
     const userId = String(msg.from.id);
-    const target = match[1] ? match[1].trim() : 'full-system';
+    const target = match[1] ? match[1].trim() : 'system';
 
     try {
       await confirmationGate({
@@ -18,23 +18,28 @@ function registerScan(bot, deps) {
         userId,
         sendMessage: (cid, text) => bot.sendMessage(cid, text, { parse_mode: 'Markdown' }),
         executor: async () => {
-          // System scan
+
+          // ── System scan — reads the weekly root-generated lynis report ──
           if (target === 'system' || target === 'full-system') {
-            await bot.sendMessage(chatId, '🔍 *Running system audit with lynis…*', { parse_mode: 'Markdown' });
-            try {
-              const { execSync } = require('child_process');
-              const output = execSync('lynis audit system --quick 2>/dev/null | tail -40', {
-                encoding: 'utf8',
-                timeout: 60000
-              });
-              await bot.sendMessage(chatId, `📋 *Lynis System Audit*\n\n\`\`\`${output.substring(0, 3500)}\`\`\``, { parse_mode: 'Markdown' });
-            } catch (e) {
-              await bot.sendMessage(chatId, `❌ Lynis failed: ${e.message}`);
+            const fs = require('fs');
+            const reportPath = '/home/korvin/korvin/data/lynis-report.txt';
+            if (!fs.existsSync(reportPath)) {
+              await bot.sendMessage(chatId, '📋 No lynis report found. The weekly audit runs every Sunday at 2 AM.');
+              return;
+            }
+            const output = fs.readFileSync(reportPath, 'utf8');
+            const lines = output.split('\n');
+            const lastRun = lines[0] || 'Unknown date';
+            const body = lines.slice(1).join('\n');
+            await bot.sendMessage(chatId, `📋 *Lynis System Audit* (last run: ${lastRun})\n\n\`\`\`${body.substring(0, 3500)}\`\`\``, { parse_mode: 'Markdown' });
+
+            if (logActivity) {
+              try { logActivity('system_scan', 'lynis report read', lastRun); } catch (_) {}
             }
             return;
           }
 
-          // VirusTotal lookup
+          // ── VirusTotal lookup ──
           const API_KEY = process.env.VIRUSTOTAL_API_KEY;
           if (!API_KEY) {
             await bot.sendMessage(chatId, '❌ VirusTotal API key not configured.');
@@ -72,11 +77,17 @@ function registerScan(bot, deps) {
             const emoji = malicious > 0 ? '🔴' : suspicious > 0 ? '🟡' : '🟢';
 
             lines.push(`${emoji} *${type.toUpperCase()}*`);
-            lines.push(`  • Detected: ${malicious} malicious, ${suspicious} suspicious / ${total} engines`);
+            if (malicious > 0) lines.push(`  • ⚠️ ${malicious} engines flagged this as malicious`);
+            if (suspicious > 0) lines.push(`  • ${suspicious} engines flagged as suspicious`);
+            lines.push(`  • Total: ${malicious} malicious, ${suspicious} suspicious / ${total} engines`);
             if (item.attributes?.meaningful_name) {
               lines.push(`  • Name: ${item.attributes.meaningful_name}`);
             }
             lines.push('');
+          }
+
+          if (items.length > 3) {
+            lines.push(`_…and ${items.length - 3} more results_`);
           }
 
           await bot.sendMessage(chatId, lines.join('\n'), { parse_mode: 'Markdown' });
