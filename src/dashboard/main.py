@@ -86,7 +86,8 @@ def health_check():
             dirs = sorted([d for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))])
             if dirs:
                 health["backup_last"] = dirs[-1]
-                last_ts = dirs[-1].replace("_", "T", 1).replace("_", "-", 1).replace("_", ":", 1).replace("_", ":")
+                parts = dirs[-1].split("_", 1)
+                last_ts = parts[0] + "T" + parts[1].replace("-", ":")
                 age = datetime.utcnow() - datetime.fromisoformat(last_ts)
                 health["backup_hours"] = round(age.total_seconds() / 3600, 1)
         except Exception:
