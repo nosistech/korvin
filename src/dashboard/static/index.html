@@ -304,6 +304,7 @@ let killActive = false;
 let cwLimit = 46;
 let configMaxTokens = 128000;
 let autoRefreshTimer = null;
+let chatRefreshTimer = null;
 let chatRequestCount = 0;
 const CHAT_RATE_LIMIT = 10;
 
@@ -326,6 +327,7 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
   clearInterval(autoRefreshTimer);
+  clearInterval(chatRefreshTimer);
   if (id === 'home') {
     loadSystem(); loadActiveModelStatus(); loadContextWindow('cw-home');
     autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
@@ -334,7 +336,11 @@ function showPage(id, btn) {
   if (id === 'logs') loadLogs();
   if (id === 'security') loadKillswitch();
   if (id === 'settings') loadModels();
-  if (id === 'chat') { chatRequestCount = 0; loadChatHistory(); }
+  if (id === 'chat') { 
+  chatRequestCount = 0; 
+  loadChatHistory(); 
+  chatRefreshTimer = setInterval(loadChatHistory, 5000);
+}
 }
 
 // ── System ─────────────────────────────────────────────────────────
