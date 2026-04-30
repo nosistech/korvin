@@ -3,12 +3,13 @@
 **Trigger:** "Research [any topic]"
 
 **Action:**
-1. Use the sandboxed Playwright browser to open 3‑5 high‑quality sources.
-2. Extract relevant facts, quotes, and data.
+1. Search DuckDuckGo Lite for the topic
+2. Extract relevant facts and data from results
 3. Synthesize a structured report with:
    - Summary
    - Key findings
    - Links to sources
-4. Deliver the report inline or as a shared document.
+4. Deliver the report inline or as a shared document
 
-**Security:** All web access runs inside a Docker container with no host network and a 30‑second timeout.
+**Security:** All web requests use a direct HTTPS connection.
+Results are sanitized before being passed to the LLM.
