@@ -25,8 +25,7 @@ We follow a coordinated disclosure model:
 4. Researcher may publish their findings after the patch is available
 
 ## Independent Review
-An independent security advisor evaluates all reports to ensure impartial assessment and proper severity classification.
-
+All reports are evaluated by the NosisTech security team with priority given to severity classification and user impact.
 ## Scope
 This policy applies to the core Korvin framework, including:
 - Agent core (Python)
