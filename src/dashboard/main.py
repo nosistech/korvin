@@ -233,11 +233,12 @@ def switch_model(body: SwitchModelRequest):
     previous = _read_active_model()
     try:
         _write_active_model(slug)
-        subprocess.run(["systemctl", "restart", "litellm"], check=True, timeout=15)
-        time.sleep(3)
+        subprocess.run(["systemctl", "restart", "litellm"], check=True, timeout=45)
+        time.sleep(12)
         import urllib.request
         try:
-            urllib.request.urlopen("http://localhost:4000/health", timeout=5)
+            req = urllib.request.Request("http://localhost:4000/health", headers={"Authorization": "Bearer nosistech-proxy-2026"})
+            urllib.request.urlopen(req, timeout=10)
         except Exception:
             raise Exception("LiteLLM did not come back healthy")
         return {
