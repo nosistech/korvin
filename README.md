@@ -448,8 +448,8 @@ korvin/
 │   ├── commands/
 │   │   ├── scan.js                 # /scan — VirusTotal + Lynis
 │   │   ├── patch.js                # /patch — LLM CVE research
-│   │   ├── compliance.js           # /compliance
-│   │   └── incident.js             # /incident
+│   │   
+│   │   
 │   ├── middleware/
 │   │   ├── confirmation-gate.js    # /confirm guard for HIGH-risk actions
 │   │   ├── sanitizer.js            # Prompt injection blocker
