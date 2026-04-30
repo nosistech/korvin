@@ -1,6 +1,5 @@
 const LITELLM_URL = 'http://localhost:4000/v1/chat/completions';
-const ACTIVE_MODEL_PATH = '/root/korvin/data/active_model.txt';
-
+const ACTIVE_MODEL_PATH = '/home/korvin/korvin/data/active_model.txt';
 function getActiveModel() {
   try {
     return fs.readFileSync(ACTIVE_MODEL_PATH, 'utf8').trim();
