@@ -1,6 +1,6 @@
 # Korvin
 
-**Self-hosted AI agent framework. Voice-first. Security-native. No lock-in.**
+**Self-hosted personal AI agent. Voice-first. Memory-persistent. No lock-in.**
 
 Korvin runs on your own machine or a $5 VPS. You bring your API keys. You own your data. No third party ever touches your messages, credentials, or billing.
 
@@ -29,6 +29,8 @@ This is what "no lock-in" means in practice.
 - **Manages its own memory** — sliding window, summarization, or hard stop strategies
 - **Switches models instantly** — tap a model on the dashboard, the agent picks it up on the next message
 - **Runs on anything** — $5 VPS, local GPU machine, cloud VM, Raspberry Pi
+
+> ⚠️ **For non-technical users:** This is self-hosted software that requires a VPS, basic command-line familiarity, and your own API keys. If terms like "SSH," "systemd," or "environment variables" are unfamiliar, consider asking a technical friend to help with the initial setup. The agent itself is designed to be voice-driven and simple — getting it running is the hardest part.
 
 ---
 
@@ -498,6 +500,12 @@ See `SECURITY.md` for responsible disclosure policy.
 ## License
 
 MIT — see `LICENSE.md` for full details.
+
+## License
+
+MIT — see `LICENSE.md` for full details.
+
+MIT License — free for personal, educational, and commercial use. Copies of this software must include the copyright notice and license text. KORVIN is provided as-is with no warranty. See `LICENSE.md` for full terms and third-party attributions.
 
 ---
 

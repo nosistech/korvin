@@ -48,6 +48,8 @@ function formatStats(attrs, target, type) {
     lines.push('', `⚠️ *${malicious} engine(s) flagged this as malicious.*`);
   }
 
+  lines.push('', '⚠️ *Disclaimer:* A clean result means no engine flagged this target at scan time. It does not guarantee safety — new threats may not yet be in VirusTotal\'s database. KORVIN is not responsible for decisions made based on this result.');
+
   return lines.join('\n');
 }
 

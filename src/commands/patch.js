@@ -1,7 +1,5 @@
 // src/commands/patch.js
-// /patch command — HIGH risk, uses confirmationGate
-// LLM CVE research only — no shell execution
-
+// /patch <package> — LLM researches CVEs, returns recommendation only (no shell execution)
 'use strict';
 
 function registerPatch(bot, deps) {
@@ -13,7 +11,8 @@ function registerPatch(bot, deps) {
     const target = match[1] ? match[1].trim() : null;
 
     if (!target) {
-      await bot.sendMessage(msg.chat.id,
+      await bot.sendMessage(
+        msg.chat.id,
         '⚠️ *Usage:* `/patch <package>`\n\nExample: `/patch openssl`',
         { parse_mode: 'Markdown' }
       );
@@ -29,23 +28,22 @@ function registerPatch(bot, deps) {
         sendMessage: (cid, text) => bot.sendMessage(cid, text, { parse_mode: 'Markdown' }),
         executor: async () => {
           const { sendMessage } = require('../openclaw/gateway');
-          await bot.sendMessage(msg.chat.id,
-            `🔍 *Researching CVEs for \`${target}\`…*`,
-            { parse_mode: 'Markdown' }
-          );
+
+          await bot.sendMessage(msg.chat.id, `🔍 *Researching CVEs for \`${target}\`…*`, { parse_mode: 'Markdown' });
+
           const prompt = [
             `Research known CVEs for the software package "${target}".`,
-            `For each CVE found, include: CVE ID, CVSS severity score, one-line description, and the recommended patched version or mitigation command.`,
-            `Do NOT execute anything. Provide only security intelligence and recommendations.`,
-            `If the package is not found or has no known CVEs, say so clearly.`,
+            `For each CVE, include: CVE ID, CVSS severity score, one-line description, and the recommended patched version or mitigation command.`,
+            `Do NOT execute anything. Provide only the security intelligence.`,
+            `If the package is not found, say so clearly.`,
           ].join('\n');
+
           const raw = await sendMessage(prompt, chatId);
+
           const reply = `📋 *Patch intelligence for \`${target}\`*\n\n${raw}`;
-          try {
-            await bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
-          } catch (_) {
-            await bot.sendMessage(msg.chat.id, reply.replace(/[*`_]/g, ''));
-          }
+          await bot.sendMessage(msg.chat.id, reply, { parse_mode: 'Markdown' });
+          await bot.sendMessage(msg.chat.id, `⚠️ Disclaimer: This is AI-generated security intelligence. Verify all CVE IDs, severity scores, and patch recommendations against the official NVD (nvd.nist.gov) or the vendor's security advisory before taking action. KORVIN does not guarantee accuracy.`);
+
           if (logActivity) {
             try { logActivity('patch_cve_research', target, raw.substring(0, 200)); } catch (_) {}
           }
