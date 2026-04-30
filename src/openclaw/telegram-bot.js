@@ -53,7 +53,7 @@ function transcribe(audioPath) {
     `cd /home/korvin/korvin && venv/bin/python3 -c "
 import warnings, whisper
 warnings.filterwarnings('ignore')
-m = whisper.load_model('base')
+m = whisper.load_model('tiny.en')
 r = m.transcribe('${audioPath}', fp16=False)
 print(r['text'].strip())
 "`,
@@ -279,4 +279,22 @@ bot.on('voice', async (msg) => {
 (async () => {
   await startDashboard();
   console.log('Korvin bot started. /help for commands.');
+
+  // Pre‑warm Whisper tiny.en so first voice message is fast (~3 seconds instead of ~15)
+  setTimeout(() => {
+    try {
+      execSync(
+        `cd /home/korvin/korvin && venv/bin/python3 -c "
+import warnings, whisper
+warnings.filterwarnings('ignore')
+whisper.load_model('tiny.en')
+print('ok')
+"`,
+        { encoding: 'utf8', timeout: 60000 }
+      );
+      console.log('Whisper model pre‑warmed.');
+    } catch (_) {
+      console.log('Whisper pre‑warm skipped (will load on first voice message).');
+    }
+  }, 3000);
 })();
