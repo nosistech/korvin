@@ -2,6 +2,55 @@
 // /scan <target> — VirusTotal lookup or system audit (reads weekly lynis report)
 'use strict';
 
+const fs = require('fs');
+
+function detectTargetType(target) {
+  if (/^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$|^[a-fA-F0-9]{64}$/.test(target)) return 'file';
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(target)) return 'ip';
+  if (/^[0-9a-fA-F:]{17,39}$/.test(target)) return 'ip'; // IPv6 basic
+  return 'url'; // domains and URLs
+}
+
+function buildVTUrl(target, type) {
+  if (type === 'file') return `https://www.virustotal.com/api/v3/files/${target}`;
+  if (type === 'ip')   return `https://www.virustotal.com/api/v3/ip_addresses/${target}`;
+  // URLs and domains: VT requires base64url-encoded URL (no padding)
+  const encoded = Buffer.from(target).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return `https://www.virustotal.com/api/v3/urls/${encoded}`;
+}
+
+function formatStats(attrs, target, type) {
+  const stats = attrs?.last_analysis_stats || {};
+  const total = Object.values(stats).reduce((a, b) => a + b, 0) || 1;
+  const malicious  = stats.malicious  || 0;
+  const suspicious = stats.suspicious || 0;
+  const harmless   = stats.harmless   || 0;
+  const undetected = stats.undetected || 0;
+
+  const emoji = malicious > 0 ? '🔴' : suspicious > 0 ? '🟡' : '🟢';
+  const lines = [`${emoji} *VirusTotal — \`${target}\`*`, `_Type: ${type.toUpperCase()}_`, ''];
+
+  lines.push(`• Malicious:  ${malicious}/${total} engines`);
+  lines.push(`• Suspicious: ${suspicious}/${total} engines`);
+  lines.push(`• Harmless:   ${harmless} | Undetected: ${undetected}`);
+
+  if (attrs?.meaningful_name) lines.push(`• Name: ${attrs.meaningful_name}`);
+  if (attrs?.country)         lines.push(`• Country: ${attrs.country}`);
+  if (attrs?.as_owner)        lines.push(`• ASN Owner: ${attrs.as_owner}`);
+  if (attrs?.last_submission_date) {
+    const d = new Date(attrs.last_submission_date * 1000).toISOString().split('T')[0];
+    lines.push(`• Last submission: ${d}`);
+  }
+
+  if (malicious === 0 && suspicious === 0) {
+    lines.push('', '✅ No threats detected.');
+  } else {
+    lines.push('', `⚠️ *${malicious} engine(s) flagged this as malicious.*`);
+  }
+
+  return lines.join('\n');
+}
+
 function registerScan(bot, deps) {
   const { confirmationGate, logActivity } = deps;
 
@@ -19,82 +68,67 @@ function registerScan(bot, deps) {
         sendMessage: (cid, text) => bot.sendMessage(cid, text, { parse_mode: 'Markdown' }),
         executor: async () => {
 
-          // ── System scan — reads the weekly root-generated lynis report ──
+          // ── System scan — reads weekly root-generated lynis report ──
           if (target === 'system' || target === 'full-system') {
-            const fs = require('fs');
             const reportPath = '/home/korvin/korvin/data/lynis-report.txt';
             if (!fs.existsSync(reportPath)) {
               await bot.sendMessage(chatId, '📋 No lynis report found. The weekly audit runs every Sunday at 2 AM.');
               return;
             }
             const output = fs.readFileSync(reportPath, 'utf8');
-            const lines = output.split('\n');
+            const lines  = output.split('\n');
             const lastRun = lines[0] || 'Unknown date';
-            const body = lines.slice(1).join('\n');
-            await bot.sendMessage(chatId, `📋 *Lynis System Audit* (last run: ${lastRun})\n\n\`\`\`${body.substring(0, 3500)}\`\`\``, { parse_mode: 'Markdown' });
-
-            if (logActivity) {
-              try { logActivity('system_scan', 'lynis report read', lastRun); } catch (_) {}
-            }
+            const body    = lines.slice(1).join('\n');
+            await bot.sendMessage(chatId,
+              `📋 *Lynis System Audit* (last run: ${lastRun})\n\n\`\`\`${body.substring(0, 3500)}\`\`\``,
+              { parse_mode: 'Markdown' }
+            );
+            if (logActivity) try { logActivity('system_scan', 'lynis report read', lastRun); } catch (_) {}
             return;
           }
 
           // ── VirusTotal lookup ──
           const API_KEY = process.env.VIRUSTOTAL_API_KEY;
           if (!API_KEY) {
-            await bot.sendMessage(chatId, '❌ VirusTotal API key not configured.');
+            await bot.sendMessage(chatId, '❌ VirusTotal API key not configured. Add VIRUSTOTAL_API_KEY to /etc/korvin.env');
             return;
           }
 
-          await bot.sendMessage(chatId, `🔍 *Querying VirusTotal for \`${target}\`…*`, { parse_mode: 'Markdown' });
+          const type = detectTargetType(target);
+          await bot.sendMessage(chatId,
+            `🔍 *Scanning \`${target}\`…* _(${type})_`,
+            { parse_mode: 'Markdown' }
+          );
 
-          const url = `https://www.virustotal.com/api/v3/search?query=${encodeURIComponent(target)}`;
-          const res = await fetch(url, {
+          const vtUrl = buildVTUrl(target, type);
+          const res = await fetch(vtUrl, {
             headers: { 'x-apikey': API_KEY, 'Accept': 'application/json' }
           });
 
+          // URL endpoint returns 404 if never submitted — submit first, then poll
+          if (res.status === 404 && type === 'url') {
+            await bot.sendMessage(chatId, `⚪ "${target}" has never been submitted to VirusTotal. No data available.`);
+            return;
+          }
+
           if (!res.ok) {
-            await bot.sendMessage(chatId, `❌ VirusTotal API error: ${res.status}`);
+            const body = await res.text().catch(() => '');
+            await bot.sendMessage(chatId, `❌ VirusTotal API error: ${res.status}\n${body.substring(0, 200)}`);
             return;
           }
 
-          const json = await res.json();
-          const items = json.data || [];
+          const json  = await res.json();
+          const attrs = json?.data?.attributes;
 
-          if (items.length === 0) {
-            await bot.sendMessage(chatId, `⚪ No results found for "${target}".`);
+          if (!attrs) {
+            await bot.sendMessage(chatId, `⚪ No analysis data found for "${target}".`);
             return;
           }
 
-          const lines = [`📋 *VirusTotal results for \`${target}\`*`, ''];
+          const report = formatStats(attrs, target, type);
+          await bot.sendMessage(chatId, report, { parse_mode: 'Markdown' });
 
-          for (const item of items.slice(0, 3)) {
-            const type = item.type || 'unknown';
-            const stats = item.attributes?.last_analysis_stats || {};
-            const total = Object.values(stats).reduce((a, b) => a + b, 0) || 1;
-            const malicious = stats.malicious || 0;
-            const suspicious = stats.suspicious || 0;
-            const emoji = malicious > 0 ? '🔴' : suspicious > 0 ? '🟡' : '🟢';
-
-            lines.push(`${emoji} *${type.toUpperCase()}*`);
-            if (malicious > 0) lines.push(`  • ⚠️ ${malicious} engines flagged this as malicious`);
-            if (suspicious > 0) lines.push(`  • ${suspicious} engines flagged as suspicious`);
-            lines.push(`  • Total: ${malicious} malicious, ${suspicious} suspicious / ${total} engines`);
-            if (item.attributes?.meaningful_name) {
-              lines.push(`  • Name: ${item.attributes.meaningful_name}`);
-            }
-            lines.push('');
-          }
-
-          if (items.length > 3) {
-            lines.push(`_…and ${items.length - 3} more results_`);
-          }
-
-          await bot.sendMessage(chatId, lines.join('\n'), { parse_mode: 'Markdown' });
-
-          if (logActivity) {
-            try { logActivity('scan_completed', target, `${items.length} results`); } catch (_) {}
-          }
+          if (logActivity) try { logActivity('scan_completed', target, type); } catch (_) {}
         }
       });
     } catch (err) {
