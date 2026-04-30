@@ -54,6 +54,8 @@ def system_info():
 
 @app.get("/api/memory/recent")
 def recent_memory(chat_id: str = "", limit: int = 20):
+    if not chat_id:
+        chat_id = os.environ.get("KORVIN_CHAT_ID", "dashboard-chat")
     if not os.path.exists(DB_PATH):
         return {"messages": [], "error": "No memory DB found"}
     try:
@@ -69,6 +71,8 @@ def recent_memory(chat_id: str = "", limit: int = 20):
 
 @app.get("/api/memory/context-window")
 def context_window(chat_id: str = "", limit: int = 10, max_tokens: int = 128000):
+    if not chat_id:
+        chat_id = os.environ.get("KORVIN_CHAT_ID", "dashboard-chat")
     if not os.path.exists(DB_PATH):
         return {"messages_used": 0, "messages_limit": limit, "tokens_estimate": 0, "max_tokens": max_tokens, "pct_messages": 0, "pct_tokens": 0, "status": "ok"}
     try:
