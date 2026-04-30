@@ -216,7 +216,11 @@ bot.on('message', async (msg) => {
   }
 
   // ── Pending grill answers — user replied to earlier grill questions ──
-  if (pendingGrills.has(chatId)) {
+  if (      const maxLen = 3800;
+      const finalReply = summary.length > maxLen
+        ? summary.substring(0, maxLen) + '\n\n_📋 Research was truncated. Ask me to elaborate on any section._'
+        : summary;
+      await bot.sendMessage(chatId, finalReply, { parse_mode: 'Markdown' });) {
     const grill = pendingGrills.get(chatId);
     pendingGrills.delete(chatId);
     await bot.sendMessage(chatId, `🔍 *Researching "${grill.topic}" with your answers…*`, { parse_mode: 'Markdown' });
