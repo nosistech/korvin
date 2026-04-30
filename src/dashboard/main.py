@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 app = FastAPI(title="Korvin Dashboard")
-app.mount("/static", StaticFiles(directory="/root/korvin/src/dashboard/static"), name="static")
+app.mount("/static", StaticFiles(directory="/home/korvin/korvin/src/dashboard/static"), name="static")
 
-DB_PATH = "/root/korvin/data/memory.db"
-KILLSWITCH_FLAG = "/root/korvin/data/killswitch.flag"
+DB_PATH = "/home/korvin/korvin/data/memory.db"
+KILLSWITCH_FLAG = "/home/korvin/korvin/data/killswitch.flag"
 
 def require_key(x_korvin_key: Optional[str] = Header(default=None)):
     api_key = os.environ.get("KORVIN_API_KEY", "")
@@ -26,7 +26,7 @@ LOG_SANITIZE = re.compile(
 
 @app.get("/", response_class=HTMLResponse)
 def root():
-    with open("/root/korvin/src/dashboard/static/index.html") as f:
+    with open("/home/korvin/korvin/src/dashboard/static/index.html") as f:
         html = f.read()
     api_key = os.environ.get("KORVIN_API_KEY", "")
     html = html.replace("__KORVIN_API_KEY__", api_key)
@@ -125,7 +125,7 @@ def killswitch_set(body: KillswitchRequest):
     active = os.path.exists(KILLSWITCH_FLAG)
     return {"killswitch": active, "mode": "read_only" if active else "normal"}
 
-CONFIG_PATH = "/root/korvin/config.json"
+CONFIG_PATH = "/home/korvin/korvin/config.json"
 
 def _read_config():
     try:
@@ -140,7 +140,7 @@ def _write_config(updates: dict):
     with open(CONFIG_PATH, 'w') as f:
         json.dump(config, f, indent=2)
 
-ACTIVE_MODEL_PATH = "/root/korvin/data/active_model.txt"
+ACTIVE_MODEL_PATH = "/home/korvin/korvin/data/active_model.txt"
 
 MODEL_LABELS = {
     "deepseek-v4-pro": "DeepSeek V4 Pro",
@@ -230,13 +230,15 @@ def switch_model(body: SwitchModelRequest):
     slug = body.model.strip()
     if slug not in MODEL_WHITELIST:
         raise HTTPException(status_code=400, detail=f"Model '{slug}' not in whitelist")
-    _write_active_model(slug)
-    return {
-        "success": True,
-        "active_model": slug,
-        "model_string": MODEL_WHITELIST[slug],
-        "switched_at": datetime.utcnow().isoformat()
-    }
+    previous = _read_active_model()
+    try:
+        _write_active_model(slug)
+        return {
+            "success": True,
+            "active_model": slug,
+            "model_string": MODEL_WHITELIST[slug],
+            "switched_at": datetime.utcnow().isoformat()
+        }
     except Exception as e:
         _write_active_model(previous)
         raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}. Rolled back to {previous}.")
