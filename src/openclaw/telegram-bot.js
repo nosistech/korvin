@@ -34,6 +34,9 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const VOICE_DIR = '/tmp/korvin_voice';
 if (!fs.existsSync(VOICE_DIR)) fs.mkdirSync(VOICE_DIR);
 
+// ── Grill Mode state ──────────────────────────────────────────────────────────
+const pendingGrills = new Map();
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function downloadFile(url, dest) {
@@ -92,6 +95,13 @@ function cleanup(...files) {
   }
 }
 
+// ── Grill Mode ────────────────────────────────────────────────────────────────
+
+async function generateGrillQuestions(topic) {
+  const prompt = `You are Korvin. The user wants to research: "${topic}". Before doing any research, generate 3-5 clarifying questions that will help narrow the scope and produce a better result. Number the questions. Be concise.`;
+  return await sendMessage(prompt);
+}
+
 // ── Research ──────────────────────────────────────────────────────────────────
 
 async function getResearchSummary(topic) {
@@ -139,6 +149,7 @@ bot.onText(/\/start|\/help/, async (msg) => {
     `\`/status\` — VPS health report\n` +
     `\`/scan [target]\` — Security scan (HIGH risk)\n` +
     `\`/patch <target>\` — Apply patch (HIGH risk)\n` +
+    `\`/grill <topic>\` — Clarifying questions before research\n` +
     `\`/log\` — Recent activity\n` +
     `\`/pending\` — Pending confirmations\n` +
     `\`/help\` — this menu\n\n` +
@@ -183,6 +194,7 @@ bot.onText(/\/pending/, (msg) => {
 const commandDeps = { confirmationGate, logActivity };
 registerPatch(bot, commandDeps);
 registerScan(bot, commandDeps);
+
 // ── Text Handler ──────────────────────────────────────────────────────────────
 
 bot.on('message', async (msg) => {
@@ -194,6 +206,35 @@ bot.on('message', async (msg) => {
   const sanity = sanitizeInput(text);
   if (sanity.safe === false) {
     await bot.sendMessage(chatId, 'Input rejected: ' + sanity.reason);
+    return;
+  }
+
+  // ── Grill Mode — ask clarifying questions before research ──
+  if (sanity.value.toLowerCase().startsWith('/grill ') || sanity.value.toLowerCase().startsWith('grill ')) {
+    const topic = sanity.value.replace(/^\/?grill\s+/i, '').trim();
+    try {
+      const questions = await generateGrillQuestions(topic);
+      pendingGrills.set(chatId, { topic, questions });
+      await bot.sendMessage(chatId, `🔍 *Grill Mode — ${topic}*\n\n${questions}\n\n_Reply with your answers to proceed with the research._`, { parse_mode: 'Markdown' });
+    } catch (err) {
+      await bot.sendMessage(chatId, `Grill error: ${err.message}`);
+    }
+    return;
+  }
+
+  // ── Pending grill answers — user replied to earlier grill questions ──
+  if (pendingGrills.has(chatId)) {
+    const grill = pendingGrills.get(chatId);
+    pendingGrills.delete(chatId);
+    await bot.sendMessage(chatId, `🔍 *Researching "${grill.topic}" with your answers…*`, { parse_mode: 'Markdown' });
+    try {
+      const prompt = `You are Korvin. The user wants to research "${grill.topic}". Here are the clarifying questions you asked and the user's answers:\n\n${grill.questions}\n\nUser's answers:\n${sanity.value}\n\nNow perform the research based on this context. Provide a concise report.`;
+      const summary = await sendMessage(prompt, chatId);
+      await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
+      try { logActivity('grill_research', grill.topic, summary.substring(0, 200)); } catch (_) {}
+    } catch (err) {
+      await bot.sendMessage(chatId, `Research error: ${err.message}`);
+    }
     return;
   }
 
