@@ -433,11 +433,9 @@ def chat(body: ChatRequest):
             return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
         data = resp.json()
         reply = data["choices"][0]["message"]["content"]
-        # ── TEST THRESHOLD (50 tokens) — restore to 5000 after test ──
         used = data.get("usage", {}).get("total_tokens", 0)
-        if used > 50:
+        if used > 5000:
             reply += f"\n\n💰 This response used {used:,} tokens. Switch models in Settings to reduce costs."
-        # Track token usage
         total_tokens = data.get("usage", {}).get("total_tokens", 0)
         if total_tokens:
             try:

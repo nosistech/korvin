@@ -98,9 +98,8 @@ async function sendMessage(userMessage, chatId = 'default') {
   const data = await response.json();
   const reply = data.choices[0].message.content;
 
-  // ── TEST THRESHOLD (50 tokens) — restore to 5000 after test ──
   const used = (data.usage && data.usage.total_tokens) || 0;
-  const budgetWarning = used > 50
+  const budgetWarning = used > 5000
     ? `\n\n_💰 This response used ${used.toLocaleString()} tokens (~$${((used / 1_000_000) * 0.87).toFixed(4)}). Use /brief to reduce costs._`
     : '';
 
