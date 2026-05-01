@@ -13,6 +13,8 @@ app.mount("/static", StaticFiles(directory="/home/korvin/korvin/src/dashboard/st
 
 DB_PATH = "/home/korvin/korvin/data/memory.db"
 KILLSWITCH_FLAG = "/home/korvin/korvin/data/killswitch.flag"
+CHAT_TIMEOUT_PATH = "/home/korvin/korvin/data/chat_timeout.txt"
+TOKEN_WARNING_PATH = "/home/korvin/korvin/data/token_warning_threshold.txt"
 
 def require_key(x_korvin_key: Optional[str] = Header(default=None)):
     api_key = os.environ.get("KORVIN_API_KEY", "")
@@ -23,6 +25,30 @@ LOG_SANITIZE = re.compile(
     r'(Traceback \(most recent call last\)|File "/.*?"|^\s+.*\.py.*$)',
     re.MULTILINE
 )
+
+def _read_chat_timeout():
+    try:
+        with open(CHAT_TIMEOUT_PATH) as f:
+            return int(f.read().strip())
+    except:
+        return int(os.environ.get("LITELLM_CHAT_TIMEOUT", "180"))
+
+def _write_chat_timeout(seconds: int):
+    os.makedirs(os.path.dirname(CHAT_TIMEOUT_PATH), exist_ok=True)
+    with open(CHAT_TIMEOUT_PATH, "w") as f:
+        f.write(str(seconds))
+
+def _read_token_warning():
+    try:
+        with open(TOKEN_WARNING_PATH) as f:
+            return int(f.read().strip())
+    except:
+        return 5000
+
+def _write_token_warning(tokens: int):
+    os.makedirs(os.path.dirname(TOKEN_WARNING_PATH), exist_ok=True)
+    with open(TOKEN_WARNING_PATH, "w") as f:
+        f.write(str(tokens))
 
 # ── Public endpoints ────────────────────────────────────────────────
 
@@ -427,15 +453,15 @@ def chat(body: ChatRequest):
                 "temperature": 0.7,
                 "stream": False
             },
-            timeout=int(os.environ.get("LITELLM_CHAT_TIMEOUT", "180"))
+            timeout=_read_chat_timeout()
         )
         if not resp.ok:
             return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
         data = resp.json()
         reply = data["choices"][0]["message"]["content"]
         used = data.get("usage", {}).get("total_tokens", 0)
-        if used > 5000:
-            reply += f"\n\n💰 This response used {used:,} tokens. Switch models in Settings to reduce costs."
+        if used > _read_token_warning():
+            reply += f"\n\n💰 This response used {used:,} tokens. You can adjust the warning threshold in Settings → Token Budget Warning."
         total_tokens = data.get("usage", {}).get("total_tokens", 0)
         if total_tokens:
             try:
@@ -443,7 +469,10 @@ def chat(body: ChatRequest):
             except Exception:
                 pass
     except Exception as e:
-        return {"reply": f"Error: {str(e)}", "error": True}
+        err_msg = str(e)
+        if "Read timed out" in err_msg or "timed out" in err_msg:
+            return {"reply": f"The AI took too long to respond (current timeout: {_read_chat_timeout()}s). You can increase this in Settings → Chat Timeout.", "error": True}
+        return {"reply": f"Error: {err_msg}", "error": True}
 
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -476,6 +505,40 @@ def chat_history(limit: int = 50):
         return {"messages": [{"role": r[0], "content": r[1], "source": r[2] or "telegram", "timestamp": r[3]} for r in reversed(rows)]}
     except Exception:
         return {"messages": []}
+
+# ── Chat Timeout (dashboard-configurable) ─────────────────────────────
+
+@app.get("/api/chat-timeout")
+def chat_timeout_get():
+    return {"timeout": _read_chat_timeout()}
+
+class ChatTimeoutRequest(BaseModel):
+    timeout: int
+
+@app.post("/api/chat-timeout", dependencies=[Depends(require_key)])
+def chat_timeout_set(body: ChatTimeoutRequest):
+    if body.timeout < 10:
+        raise HTTPException(status_code=400, detail="Timeout must be at least 10 seconds")
+    _write_chat_timeout(body.timeout)
+    return {"saved": True, "timeout": body.timeout}
+
+# ── Token Warning Threshold (dashboard-configurable) ──────────────────
+
+@app.get("/api/token-warning-threshold")
+def token_warning_get():
+    return {"threshold": _read_token_warning()}
+
+class TokenWarningRequest(BaseModel):
+    threshold: int
+
+@app.post("/api/token-warning-threshold", dependencies=[Depends(require_key)])
+def token_warning_set(body: TokenWarningRequest):
+    if body.threshold < 100:
+        raise HTTPException(status_code=400, detail="Threshold must be at least 100 tokens")
+    _write_token_warning(body.threshold)
+    return {"saved": True, "threshold": body.threshold}
+
+# ── Token Usage & Rates ────────────────────────────────────────────────
 
 @app.get("/api/token-usage")
 def token_usage():
