@@ -105,7 +105,7 @@ async function sendMessage(userMessage, chatId = 'default') {
   }
   saveMessage(chatId, 'user', safeMessage);
   saveMessage(chatId, 'assistant', reply);
-  return reply;
+    return reply + budgetWarning;
 }
 
 module.exports = { sendMessage };
