@@ -447,6 +447,9 @@ def chat(body: ChatRequest):
             return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
         data = resp.json()
         reply = data["choices"][0]["message"]["content"]
+        used = data.get("usage", {}).get("total_tokens", 0)
+        if used > 5000:
+            reply += f"\n\n💰 This response used {used:,} tokens. Use /brief in Telegram to reduce costs."
         # Track token usage
         usage = data.get("usage", {})
         total_tokens = usage.get("total_tokens", 0)
