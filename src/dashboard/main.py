@@ -1,12 +1,13 @@
-import os, sqlite3, subprocess, re, json, time
+import os, sqlite3, subprocess, re, json, time, tempfile
 from datetime import datetime, date
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import FastAPI, Header, HTTPException, Depends, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
 from collections import defaultdict
 import requests
+import whisper
 
 app = FastAPI(title="Korvin Dashboard")
 app.mount("/static", StaticFiles(directory="/home/korvin/korvin/src/dashboard/static"), name="static")
@@ -49,6 +50,15 @@ def _write_token_warning(tokens: int):
     os.makedirs(os.path.dirname(TOKEN_WARNING_PATH), exist_ok=True)
     with open(TOKEN_WARNING_PATH, "w") as f:
         f.write(str(tokens))
+
+# ── Whisper model lazy‑load ────────────────────────────────────────
+_whisper_model = None
+
+def _get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        _whisper_model = whisper.load_model("tiny.en")
+    return _whisper_model
 
 # ── Public endpoints ────────────────────────────────────────────────
 
@@ -579,3 +589,32 @@ class TokenRatesRequest(BaseModel):
 def save_token_rates(body: TokenRatesRequest):
     _write_token_rates(body.rates)
     return {"saved": True, "rates": body.rates}
+
+# ── NEW: Speech‑to‑Text endpoint ───────────────────────────────────────
+
+@app.post("/api/stt", dependencies=[Depends(require_key)])
+async def transcribe_audio(file: UploadFile = File(...)):
+    MAX_SIZE = 10 * 1024 * 1024  # 10 MB
+    content = await file.read()
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="Audio file too large (max 10 MB)")
+
+    suffix = ".wav"
+    if file.filename and file.filename.lower().endswith(".ogg"):
+        suffix = ".ogg"
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        tmp.write(content)
+        tmp.close()
+        model = _get_whisper_model()
+        result = model.transcribe(tmp.name, fp16=False)
+        text = result["text"].strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except:
+            pass
+    return {"text": text}
