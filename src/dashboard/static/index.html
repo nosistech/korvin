@@ -88,6 +88,8 @@
   .apply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .prune-btn { background: var(--yellow); color: #000; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 12px; margin-left: 8px; transition: opacity 0.2s; }
   .prune-btn:hover { opacity: 0.85; }
+  .export-btn { background: var(--bg3); color: var(--text); border: 1px solid var(--border); padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 12px; transition: all 0.2s; }
+  .export-btn:hover { border-color: var(--blue); color: var(--link); }
   .strategy-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; margin-top: 10px; width: 100%; max-width: 320px; }
   .feedback { font-size: 0.8rem; margin-top: 8px; min-height: 18px; }
   .feedback.ok { color: var(--green); }
@@ -97,15 +99,15 @@
   .summarizer-fields { margin-top: 4px; padding: 14px; background: var(--bg3); border-radius: 8px; border: 1px solid var(--border); }
   .summarizer-fields .hint { font-size: 0.75rem; color: var(--text3); margin-top: 6px; }
   .model-switcher { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-.model-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
-.model-btn:hover { border-color: var(--blue); color: var(--text); }
-.model-btn.active-model { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
-.model-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.model-badge { display: inline-block; background: var(--bg3); border: 1px solid var(--cyan); color: var(--cyan); font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; margin-top: 8px; }
-.switch-feedback { font-size: 0.8rem; margin-top: 10px; min-height: 18px; }
-.switch-feedback.ok { color: var(--green); }
-.switch-feedback.err { color: var(--red); }
-.switch-feedback.loading { color: var(--yellow); }
+  .model-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+  .model-btn:hover { border-color: var(--blue); color: var(--text); }
+  .model-btn.active-model { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .model-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .model-badge { display: inline-block; background: var(--bg3); border: 1px solid var(--cyan); color: var(--cyan); font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; margin-top: 8px; }
+  .switch-feedback { font-size: 0.8rem; margin-top: 10px; min-height: 18px; }
+  .switch-feedback.ok { color: var(--green); }
+  .switch-feedback.err { color: var(--red); }
+  .switch-feedback.loading { color: var(--yellow); }
 </style>
 </head>
 <body>
@@ -124,20 +126,6 @@
   </nav>
 </header>
 <main>
-
-<!-- CHAT -->
-<div id="page-chat" class="page">
-  <h2>Chat</h2>
-  <div class="card" style="display:flex;flex-direction:column;height:70vh;min-height:400px;padding:0;">
-    <div class="msg-list" id="chat-messages" style="flex:1;padding:16px;overflow-y:auto;">
-      <div style="color:var(--text3);font-size:0.85rem">Send a message to start chatting with Korvin.</div>
-    </div>
-    <div style="border-top:1px solid var(--border);padding:12px;display:flex;gap:8px;">
-      <input class="search-input" id="chat-input" type="text" placeholder="Type a message…" style="margin:0;flex:1;" onkeydown="if(event.key==='Enter')sendChat()">
-      <button class="apply-btn" id="chat-send-btn" onclick="sendChat()" style="margin:0;white-space:nowrap;">Send</button>
-    </div>
-  </div>
-</div>
 
 <!-- HOME -->
 <div id="page-home" class="page active">
@@ -181,9 +169,24 @@
       <div class="bar-wrap"><div class="bar ok" id="bar-disk" style="width:0%"></div></div>
     </div>
   </div>
+
   <div class="card">
     <h3>Context Window</h3>
     <div id="cw-home"><div class="cw-meta">Loading...</div></div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div id="page-chat" class="page">
+  <h2>Chat</h2>
+  <div class="card" style="display:flex;flex-direction:column;height:70vh;min-height:400px;padding:0;">
+    <div class="msg-list" id="chat-messages" style="flex:1;padding:16px;overflow-y:auto;">
+      <div style="color:var(--text3);font-size:0.85rem">Send a message to start chatting with Korvin.</div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:12px;display:flex;gap:8px;">
+      <input class="search-input" id="chat-input" type="text" placeholder="Type a message…" style="margin:0;flex:1;" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="apply-btn" id="chat-send-btn" onclick="sendChat()" style="margin:0;white-space:nowrap;">Send</button>
+    </div>
   </div>
 </div>
 
@@ -253,6 +256,8 @@
     <h3>Conversation History <button class="refresh-btn" onclick="loadMemory()">↻ Refresh</button></h3>
     <input class="search-input" id="mem-search" placeholder="Search messages..." oninput="filterMessages()">
     <div class="msg-list" id="msg-list"><div style="color:var(--text3);font-size:0.85rem">Loading...</div></div>
+    <button class="export-btn" onclick="exportChat()">⬇ Download Chat History</button>
+    <div class="feedback" id="export-feedback"></div>
   </div>
 </div>
 
@@ -279,20 +284,47 @@
 <!-- SETTINGS -->
 <div id="page-settings" class="page">
   <h2>Settings</h2>
-   <div class="card">
+
+  <div class="card">
     <h3>🤖 Active Model</h3>
     <div class="model-badge" id="active-model-badge">Loading...</div>
     <div class="model-switcher" id="model-switcher"></div>
     <div class="switch-feedback" id="switch-feedback"></div>
     <p style="font-size:0.75rem;color:var(--text3);margin-top:12px">Switching updates the active model instantly. The gateway picks up the change on the next message.</p>
   </div>
+
   <div class="card">
-    <h3>🤖 API Pricing <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(per 1M tokens)</span></h3>
+    <h3>💲 API Pricing <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(per 1M tokens)</span></h3>
     <div id="rates-fields"><span style="color:var(--text3)">Loading...</span></div>
     <button class="apply-btn" id="save-rates-btn" onclick="saveRates()" style="margin-top:12px">Save Rates</button>
     <div class="feedback" id="rates-feedback"></div>
     <p style="font-size:0.7rem;color:var(--text3);margin-top:6px">Rates update the cost estimates on the Home page. Local models are always $0.00.</p>
   </div>
+
+  <div class="card">
+    <h3>⏱ Chat Timeout <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(seconds)</span></h3>
+    <div class="status-row">
+      <span>Wait up to:</span>
+      <input class="field-input" type="number" id="chat-timeout-input" value="180" min="10" step="10" style="width:120px;margin:0">
+      <span style="color:var(--text3);font-size:0.8rem">seconds</span>
+    </div>
+    <button class="apply-btn" id="save-timeout-btn" onclick="saveTimeout()" style="margin-top:12px">Save Timeout</button>
+    <div class="feedback" id="timeout-feedback"></div>
+    <p style="font-size:0.7rem;color:var(--text3);margin-top:6px">How long the dashboard waits for an AI response before showing a "took too long" error. If you see that error often, increase this number. Start with 240 for complex questions.</p>
+  </div>
+
+  <div class="card">
+    <h3>💰 Token Budget Warning <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(tokens)</span></h3>
+    <div class="status-row">
+      <span>Warn above:</span>
+      <input class="field-input" type="number" id="token-warning-input" value="5000" min="100" step="100" style="width:120px;margin:0">
+      <span style="color:var(--text3);font-size:0.8rem">tokens</span>
+    </div>
+    <button class="apply-btn" id="save-warning-btn" onclick="saveWarning()" style="margin-top:12px">Save Threshold</button>
+    <div class="feedback" id="warning-feedback"></div>
+    <p style="font-size:0.7rem;color:var(--text3);margin-top:6px">When a single response uses more tokens than this, a cost warning appears in chat. Raise it if warnings are too frequent. Set to 999999 to effectively disable.</p>
+  </div>
+
   <div class="card">
     <h3>Connected Channels</h3>
     <div class="status-row"><div class="dot green"></div>Telegram: @NosisTechBot — connected</div>
@@ -300,6 +332,7 @@
     <div class="status-row"><div class="dot yellow"></div>Discord: pending setup</div>
     <div class="status-row"><div class="dot yellow"></div>Signal: pending setup</div>
   </div>
+
   <div class="card">
     <h3>Voice</h3>
     <div class="status-row"><div class="dot green"></div>STT: Whisper base model — active</div>
@@ -330,6 +363,7 @@ let autoRefreshTimer = null;
 let chatRefreshTimer = null;
 let chatRequestCount = 0;
 let chatIsLoading = false;
+let modelList = [];
 const CHAT_RATE_LIMIT = 10;
 
 // ── Theme ──────────────────────────────────────────────────────────
@@ -359,7 +393,7 @@ function showPage(id, btn) {
   if (id === 'memory') { loadMemoryConfig(); loadMemory(); loadContextWindow('cw-memory'); }
   if (id === 'logs') loadLogs();
   if (id === 'security') loadKillswitch();
-  if (id === 'settings') { loadModels(); loadTokenRates(); }
+  if (id === 'settings') { loadModels(); loadTokenRates(); loadTimeout(); loadWarning(); }
   if (id === 'chat') {
     chatRequestCount = 0;
     loadChatHistory();
@@ -393,50 +427,45 @@ async function loadSystem() {
   } catch(e) { console.error('System load error:', e); }
 }
 
-// ── Health Check ────────────────────────────────────────────────────
+// ── Health ─────────────────────────────────────────────────────────
 async function loadHealth() {
   try {
     const r = await fetch('/api/health');
     const d = await r.json();
-
     const botOk = d.bot === 'running';
     document.getElementById('health-bot').textContent = d.bot;
     document.getElementById('health-bot-dot').className = 'dot ' + (botOk ? 'green' : 'red');
-
     const litellmOk = d.litellm === 'reachable';
     document.getElementById('health-litellm').textContent = d.litellm;
     document.getElementById('health-litellm-dot').className = 'dot ' + (litellmOk ? 'green' : 'red');
-
     const backupOk = d.backup_hours !== null && d.backup_hours < 7;
     document.getElementById('health-memory').textContent = d.memory_total + ' messages';
     document.getElementById('health-memory-dot').className = 'dot green';
     document.getElementById('health-backup').textContent = d.backup_last ? d.backup_last + ' (' + (d.backup_hours || '?') + 'h ago)' : 'none';
     document.getElementById('health-backup-dot').className = 'dot ' + (backupOk ? 'green' : 'yellow');
-
     const overallOk = d.status === 'ok';
     document.getElementById('health-overall').textContent = d.status;
     document.getElementById('health-overall-dot').className = 'dot ' + (overallOk ? 'green' : 'red');
   } catch(e) { /* ignore */ }
 }
 
-// ── Token Usage ──────────────────────────────────────────────────────
+// ── Token Usage ────────────────────────────────────────────────────
 async function loadTokenUsage() {
   try {
     const r = await fetch('/api/token-usage');
     const d = await r.json();
-    const el = document.getElementById('token-usage');
-    el.innerHTML = `
+    document.getElementById('token-usage').innerHTML = `
       <div class="status-row" style="margin-bottom:4px">Today: <strong>${d.today.tokens.toLocaleString()}</strong> tokens · ~<strong>$${d.today.cost.toFixed(4)}</strong></div>
       <div class="status-row">This month: <strong>${d.month.tokens.toLocaleString()}</strong> tokens · ~<strong>$${d.month.cost.toFixed(4)}</strong></div>
     `;
   } catch(e) { /* ignore */ }
 }
 
+// ── Token Rates ────────────────────────────────────────────────────
 async function loadTokenRates() {
   try {
     const r = await fetch('/api/token-rates');
     const d = await r.json();
-    const container = document.getElementById('rates-fields');
     const labels = {
       'deepseek-v4-pro': 'DeepSeek V4 Pro',
       'deepseek-v4-flash': 'DeepSeek V4 Flash',
@@ -444,7 +473,7 @@ async function loadTokenRates() {
       'ollama-qwen': 'Local — Qwen 2.5',
       'ollama-deepseek-coder': 'Local — DeepSeek Coder'
     };
-    container.innerHTML = Object.entries(d.rates).map(([key, val]) => {
+    document.getElementById('rates-fields').innerHTML = Object.entries(d.rates).map(([key, val]) => {
       const isLocal = key.startsWith('ollama-');
       return `<div class="status-row">
         <span style="min-width:180px">${labels[key] || key}</span>
@@ -469,7 +498,6 @@ async function saveRates() {
       body: JSON.stringify({ rates })
     });
     if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; btn.disabled = false; return; }
-    const d = await r.json();
     fb.textContent = '✓ Rates saved.';
     fb.className = 'feedback ok';
     loadTokenUsage();
@@ -480,7 +508,69 @@ async function saveRates() {
   btn.disabled = false;
 }
 
-// ── Active Model Status (for Home page) ─────────────────────────────
+// ── Chat Timeout ───────────────────────────────────────────────────
+async function loadTimeout() {
+  try {
+    const r = await fetch('/api/chat-timeout');
+    const d = await r.json();
+    document.getElementById('chat-timeout-input').value = d.timeout;
+  } catch(e) { /* ignore */ }
+}
+
+async function saveTimeout() {
+  const fb = document.getElementById('timeout-feedback');
+  const btn = document.getElementById('save-timeout-btn');
+  const val = parseInt(document.getElementById('chat-timeout-input').value) || 180;
+  try {
+    btn.disabled = true;
+    const r = await fetch('/api/chat-timeout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({ timeout: val })
+    });
+    if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; btn.disabled = false; return; }
+    const d = await r.json();
+    fb.textContent = '✓ Timeout saved: ' + d.timeout + 's';
+    fb.className = 'feedback ok';
+  } catch(e) {
+    fb.textContent = 'Error: ' + e.message;
+    fb.className = 'feedback err';
+  }
+  btn.disabled = false;
+}
+
+// ── Token Warning Threshold ────────────────────────────────────────
+async function loadWarning() {
+  try {
+    const r = await fetch('/api/token-warning-threshold');
+    const d = await r.json();
+    document.getElementById('token-warning-input').value = d.threshold;
+  } catch(e) { /* ignore */ }
+}
+
+async function saveWarning() {
+  const fb = document.getElementById('warning-feedback');
+  const btn = document.getElementById('save-warning-btn');
+  const val = parseInt(document.getElementById('token-warning-input').value) || 5000;
+  try {
+    btn.disabled = true;
+    const r = await fetch('/api/token-warning-threshold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH },
+      body: JSON.stringify({ threshold: val })
+    });
+    if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; btn.disabled = false; return; }
+    const d = await r.json();
+    fb.textContent = '✓ Threshold saved: ' + d.threshold.toLocaleString() + ' tokens';
+    fb.className = 'feedback ok';
+  } catch(e) {
+    fb.textContent = 'Error: ' + e.message;
+    fb.className = 'feedback err';
+  }
+  btn.disabled = false;
+}
+
+// ── Active Model Status ────────────────────────────────────────────
 async function loadActiveModelStatus() {
   try {
     const r = await fetch('/api/active-model');
@@ -531,17 +621,14 @@ async function loadMemoryConfig() {
 }
 
 function onStrategyChange(val) {
-  const fields = document.getElementById('summarizer-fields');
-  fields.style.display = val === 'summarize' ? 'block' : 'none';
-  const applyMode = document.getElementById('apply-toggle').checked;
-  document.getElementById('apply-btn').disabled = !applyMode;
+  document.getElementById('summarizer-fields').style.display = val === 'summarize' ? 'block' : 'none';
+  document.getElementById('apply-btn').disabled = !document.getElementById('apply-toggle').checked;
 }
 
 function updateSlider(val) {
   cwLimit = parseInt(val);
   document.getElementById('cw-slider-val').textContent = val;
-  const applyMode = document.getElementById('apply-toggle').checked;
-  document.getElementById('apply-btn').disabled = !applyMode;
+  document.getElementById('apply-btn').disabled = !document.getElementById('apply-toggle').checked;
   loadContextWindow('cw-memory');
 }
 
@@ -565,13 +652,7 @@ async function applyLimit() {
     const r = await fetch('/api/memory/limit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...AUTH },
-      body: JSON.stringify({
-        memory_limit: limit,
-        max_tokens: maxTokens,
-        memory_strategy: strategy,
-        summarizer_url: summUrl,
-        summarizer_model: summModel
-      })
+      body: JSON.stringify({ memory_limit: limit, max_tokens: maxTokens, memory_strategy: strategy, summarizer_url: summUrl, summarizer_model: summModel })
     });
     if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; return; }
     const d = await r.json();
@@ -625,33 +706,42 @@ async function loadMemory() {
 
 function renderMessages(msgs) {
   const el = document.getElementById('msg-list');
-  if (!msgs.length) {
-    el.innerHTML = '<p style="color:var(--text3);font-size:0.85rem">No conversations stored yet.</p>';
-    return;
-  }
+  if (!msgs.length) { el.innerHTML = '<p style="color:var(--text3);font-size:0.85rem">No conversations stored yet.</p>'; return; }
   el.innerHTML = msgs.map(m => {
     const isSummary = m.role === 'system' && m.content.startsWith('[SUMMARY]');
     const content = isSummary ? m.content.replace('[SUMMARY]', '').trim() : m.content;
-    const roleLabel = isSummary
-      ? '<span class="summary-badge">SUMMARY</span>'
-      : m.role;
-    return `
-      <div class="msg ${m.role}${isSummary ? ' summary' : ''}">
-        <div class="msg-role">${roleLabel} &middot; ${m.timestamp ? m.timestamp.slice(0,16).replace('T',' ') : 'unknown'}</div>
-        ${escapeHtml(content)}
-      </div>
-    `;
+    const roleLabel = isSummary ? '<span class="summary-badge">SUMMARY</span>' : m.role;
+    return `<div class="msg ${m.role}${isSummary ? ' summary' : ''}">
+      <div class="msg-role">${roleLabel} &middot; ${m.timestamp ? m.timestamp.slice(0,16).replace('T',' ') : 'unknown'}</div>
+      ${escapeHtml(content)}
+    </div>`;
   }).join('');
   el.scrollTop = el.scrollHeight;
-}
-
-function escapeHtml(t) {
-  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function filterMessages() {
   const q = document.getElementById('mem-search').value.toLowerCase();
   renderMessages(q ? allMessages.filter(m => m.content.toLowerCase().includes(q)) : allMessages);
+}
+
+async function exportChat() {
+  const fb = document.getElementById('export-feedback');
+  try {
+    const r = await fetch('/api/chat/export', { headers: AUTH });
+    if (r.status === 403) { fb.textContent = 'Auth error.'; fb.className = 'feedback err'; return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'korvin-chat-history-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    fb.textContent = '✓ Download started.';
+    fb.className = 'feedback ok';
+  } catch(e) {
+    fb.textContent = 'Error: ' + e.message;
+    fb.className = 'feedback err';
+  }
 }
 
 // ── Logs ───────────────────────────────────────────────────────────
@@ -671,7 +761,7 @@ async function loadLogs() {
   } catch(e) { box.textContent = 'Failed to load logs: ' + e.message; }
 }
 
-// ── Killswitch ─────────────────────────────────────────────────────
+// ── Kill Switch ────────────────────────────────────────────────────
 async function loadKillswitch() {
   try {
     const r = await fetch('/api/killswitch');
@@ -711,8 +801,7 @@ async function toggleKill() {
   } catch(e) { document.getElementById('kill-status').textContent = 'Error: ' + e.message; }
 }
 
-let modelList = [];
-
+// ── Model Switcher ─────────────────────────────────────────────────
 async function loadModels() {
   try {
     const r = await fetch('/api/models');
@@ -773,7 +862,7 @@ async function switchModel(slug, btn) {
   buttons.forEach(b => b.disabled = false);
 }
 
-// ── Chat ────────────────────────────────────────────────────────────
+// ── Chat ───────────────────────────────────────────────────────────
 async function loadChatHistory() {
   if (chatIsLoading) return;
   const container = document.getElementById('chat-messages');
@@ -784,9 +873,7 @@ async function loadChatHistory() {
     if (d.messages && d.messages.length > 0) {
       const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
       container.innerHTML = '';
-      d.messages.forEach(m => {
-        appendChatMessage(m.role, m.content, m.source, m.timestamp);
-      });
+      d.messages.forEach(m => appendChatMessage(m.role, m.content, m.source, m.timestamp));
       if (wasAtBottom) container.scrollTop = container.scrollHeight;
     }
   } catch(e) { /* ignore */ }
@@ -796,23 +883,19 @@ async function sendChat() {
   chatIsLoading = true;
   const container = document.getElementById('chat-messages');
   const input = document.getElementById('chat-input');
-  const btn   = document.getElementById('chat-send-btn');
-  const msg   = input.value.trim();
+  const btn = document.getElementById('chat-send-btn');
+  const msg = input.value.trim();
   if (!msg) { chatIsLoading = false; return; }
-
   chatRequestCount++;
   if (chatRequestCount > CHAT_RATE_LIMIT) {
     appendChatMessage('system', 'Rate limit reached. Please wait a minute.');
     chatIsLoading = false;
     return;
   }
-
   input.value = '';
   btn.disabled = true;
-
   appendChatMessage('user', msg, 'dashboard');
   container.scrollTop = container.scrollHeight;
-
   try {
     const r = await fetch('/api/chat', {
       method: 'POST',
@@ -820,7 +903,6 @@ async function sendChat() {
       body: JSON.stringify({ message: msg })
     });
     const d = await r.json();
-
     if (d.reply) {
       appendChatMessage('assistant', d.reply, 'dashboard');
       container.scrollTop = container.scrollHeight;
@@ -845,16 +927,22 @@ function appendChatMessage(role, content, source = null, timestamp = null) {
     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   div.innerHTML = `<div class="msg-role">${roleLabels[role] || role.toUpperCase()}${sourceEmoji} · ${timeStr}</div>${escapeHtml(content)}`;
   container.appendChild(div);
-
   const placeholder = container.querySelector('div[style]');
   if (placeholder) placeholder.remove();
+}
+
+// ── Utilities ──────────────────────────────────────────────────────
+function escapeHtml(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── Boot ───────────────────────────────────────────────────────────
 loadSystem();
 loadActiveModelStatus();
+loadHealth();
+loadTokenUsage();
 loadContextWindow('cw-home');
-autoRefreshTimer = setInterval(() => { loadSystem(); loadContextWindow('cw-home'); }, 10000);
+autoRefreshTimer = setInterval(() => { loadSystem(); loadHealth(); loadTokenUsage(); loadContextWindow('cw-home'); }, 10000);
 </script>
 </body>
 </html>
