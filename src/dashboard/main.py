@@ -427,7 +427,7 @@ def chat(body: ChatRequest):
                 "temperature": 0.7,
                 "stream": False
             },
-            timeout=30
+            timeout=90
         )
         if not resp.ok:
             return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
