@@ -23,7 +23,7 @@ function readTokenWarningThreshold() {
 function readChatTimeout() {
   try {
     const val = parseInt(fs.readFileSync(CHAT_TIMEOUT_PATH, 'utf8').trim(), 10);
-    return val >= 10 ? val : 180;   // minimum 10 seconds
+    return val >= 10 ? val : 180;
   } catch (_) {
     return 180;
   }
