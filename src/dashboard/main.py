@@ -50,15 +50,11 @@ def health_check():
         "backup_last": None,
         "backup_hours": None,
     }
-
-    # Bot status (systemd)
     try:
         r = subprocess.run(["systemctl", "is-active", "korvin"], capture_output=True, text=True, timeout=3)
         health["bot"] = "running" if r.stdout.strip() == "active" else "stopped"
     except Exception:
         pass
-
-    # LiteLLM proxy
     try:
         key = os.environ.get("LITELLM_MASTER_KEY", "")
         resp = requests.get("http://127.0.0.1:4000/health",
@@ -66,8 +62,6 @@ def health_check():
         health["litellm"] = "reachable" if resp.status_code == 200 else "error"
     except Exception:
         health["litellm"] = "unreachable"
-
-    # Memory database
     if os.path.exists(DB_PATH):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -78,8 +72,6 @@ def health_check():
             conn.close()
         except Exception:
             pass
-
-    # Backup age
     backup_dir = "/home/korvin/.backup-repo/snapshots"
     if os.path.exists(backup_dir):
         try:
@@ -92,11 +84,8 @@ def health_check():
                 health["backup_hours"] = round(age.total_seconds() / 3600, 1)
         except Exception:
             pass
-
-    # Overall status
     if health["bot"] != "running" or health["litellm"] == "unreachable":
         health["status"] = "degraded"
-
     return health
 
 @app.get("/api/system")
@@ -164,8 +153,6 @@ def context_window(chat_id: str = "", limit: int = 10, max_tokens: int = 128000)
 def killswitch_status():
     active = os.path.exists(KILLSWITCH_FLAG)
     return {"killswitch": active, "mode": "read_only" if active else "normal"}
-
-# ── Protected endpoints ─────────────────────────────────────────────
 
 @app.get("/api/logs", dependencies=[Depends(require_key)])
 def get_logs(lines: int = 100):
@@ -365,7 +352,6 @@ def _write_token_rates(rates: dict):
     with open(TOKEN_RATES_PATH, "w") as f:
         json.dump(rates, f)
 
-# ── Telegram forwarding ────────────────────────────────────────────────
 def _telegram_send(chat_id: str, text: str):
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token or not chat_id:
@@ -380,8 +366,8 @@ def _telegram_send(chat_id: str, text: str):
         pass
 
 # ── Chat ────────────────────────────────────────────────────────────────
-CHAT_RATE_LIMIT_WINDOW = 60          # 1 minute
-CHAT_RATE_LIMIT_MAX    = 10          # max requests per window
+CHAT_RATE_LIMIT_WINDOW = 60
+CHAT_RATE_LIMIT_MAX    = 10
 _chat_ratelimit: dict[str, list[float]] = defaultdict(list)
 
 def _check_chat_rate_limit(session_id: str):
@@ -447,12 +433,12 @@ def chat(body: ChatRequest):
             return {"reply": f"LiteLLM error: {resp.status_code}", "error": True}
         data = resp.json()
         reply = data["choices"][0]["message"]["content"]
+        # ── TEST THRESHOLD (50 tokens) — restore to 5000 after test ──
         used = data.get("usage", {}).get("total_tokens", 0)
-        if used > 5000:
-            reply += f"\n\n💰 This response used {used:,} tokens. Use /brief in Telegram to reduce costs."
+        if used > 50:
+            reply += f"\n\n💰 This response used {used:,} tokens. Switch models in Settings to reduce costs."
         # Track token usage
-        usage = data.get("usage", {})
-        total_tokens = usage.get("total_tokens", 0)
+        total_tokens = data.get("usage", {}).get("total_tokens", 0)
         if total_tokens:
             try:
                 _add_token_usage("deepseek-v4-pro", total_tokens)
@@ -493,15 +479,12 @@ def chat_history(limit: int = 50):
     except Exception:
         return {"messages": []}
 
-# ── Token Usage & Rates ────────────────────────────────────────────────
-
 @app.get("/api/token-usage")
 def token_usage():
     usage = _read_token_usage()
     rates = _read_token_rates()
     today = date.today().isoformat()
     today_data = usage.get(today, {})
-
     total_tokens_today = today_data.get("total_tokens", 0)
     cost_today = 0.0
     for model, data in today_data.items():
@@ -509,7 +492,6 @@ def token_usage():
             continue
         rate = rates.get(model, 0)
         cost_today += (data.get("tokens", 0) / 1_000_000) * rate
-
     month_tokens = 0
     month_cost = 0.0
     for day_key, day_data in usage.items():
@@ -520,16 +502,9 @@ def token_usage():
                     continue
                 rate = rates.get(model, 0)
                 month_cost += (data.get("tokens", 0) / 1_000_000) * rate
-
     return {
-        "today": {
-            "tokens": total_tokens_today,
-            "cost": round(cost_today, 6)
-        },
-        "month": {
-            "tokens": month_tokens,
-            "cost": round(month_cost, 6)
-        }
+        "today": {"tokens": total_tokens_today, "cost": round(cost_today, 6)},
+        "month": {"tokens": month_tokens, "cost": round(month_cost, 6)}
     }
 
 @app.get("/api/token-rates")

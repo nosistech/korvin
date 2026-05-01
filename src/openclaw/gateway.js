@@ -1,5 +1,6 @@
 const LITELLM_URL = 'http://localhost:4000/v1/chat/completions';
 const ACTIVE_MODEL_PATH = '/home/korvin/korvin/data/active_model.txt';
+
 function getActiveModel() {
   try {
     return fs.readFileSync(ACTIVE_MODEL_PATH, 'utf8').trim();
@@ -7,8 +8,10 @@ function getActiveModel() {
     return 'deepseek-v4-pro';
   }
 }
+
 const API_KEY = process.env.LITELLM_MASTER_KEY;
 if (!API_KEY) throw new Error('LITELLM_MASTER_KEY not set in /etc/korvin.env');
+
 const { sanitize: defendSanitize } = require('../security/defender');
 const { sanitize: inputSanitize } = require('../middleware/sanitizer');
 const { execSync } = require('child_process');
@@ -73,6 +76,7 @@ async function sendMessage(userMessage, chatId = 'default') {
     ...history,
     { role: 'user', content: safeMessage }
   ];
+
   let response;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -93,19 +97,20 @@ async function sendMessage(userMessage, chatId = 'default') {
   if (!response.ok) throw new Error(`LiteLLM error: ${response.status} ${response.statusText}`);
   const data = await response.json();
   const reply = data.choices[0].message.content;
+
+  // ── TEST THRESHOLD (50 tokens) — restore to 5000 after test ──
   const used = (data.usage && data.usage.total_tokens) || 0;
-  const budgetWarning = used > 5000
+  const budgetWarning = used > 50
     ? `\n\n_💰 This response used ${used.toLocaleString()} tokens (~$${((used / 1_000_000) * 0.87).toFixed(4)}). Use /brief to reduce costs._`
     : '';
 
-  // Track Telegram token usage
   const usage = data.usage;
   if (usage && usage.total_tokens) {
     trackTokenUsage(getActiveModel(), usage.total_tokens);
   }
   saveMessage(chatId, 'user', safeMessage);
   saveMessage(chatId, 'assistant', reply);
-    return reply + budgetWarning;
+  return reply + budgetWarning;
 }
 
 module.exports = { sendMessage };
