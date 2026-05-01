@@ -794,6 +794,7 @@ async function loadChatHistory() {
 
 async function sendChat() {
   chatIsLoading = true;
+  const container = document.getElementById('chat-messages');
   const input = document.getElementById('chat-input');
   const btn   = document.getElementById('chat-send-btn');
   const msg   = input.value.trim();
@@ -810,6 +811,7 @@ async function sendChat() {
   btn.disabled = true;
 
   appendChatMessage('user', msg, 'dashboard');
+  container.scrollTop = container.scrollHeight;
 
   try {
     const r = await fetch('/api/chat', {
@@ -821,6 +823,7 @@ async function sendChat() {
 
     if (d.reply) {
       appendChatMessage('assistant', d.reply, 'dashboard');
+      container.scrollTop = container.scrollHeight;
     } else {
       appendChatMessage('system', 'No response from Korvin.');
     }
@@ -833,7 +836,6 @@ async function sendChat() {
 
 function appendChatMessage(role, content, source = null, timestamp = null) {
   const container = document.getElementById('chat-messages');
-  const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 50;
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   const roleLabels = { user: 'YOU', assistant: 'KORVIN', system: 'SYSTEM' };
@@ -843,7 +845,6 @@ function appendChatMessage(role, content, source = null, timestamp = null) {
     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   div.innerHTML = `<div class="msg-role">${roleLabels[role] || role.toUpperCase()}${sourceEmoji} · ${timeStr}</div>${escapeHtml(content)}`;
   container.appendChild(div);
-  if (wasAtBottom) container.scrollTop = container.scrollHeight;
 
   const placeholder = container.querySelector('div[style]');
   if (placeholder) placeholder.remove();
