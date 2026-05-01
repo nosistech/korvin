@@ -1,5 +1,8 @@
+const fs = require('fs');
 const LITELLM_URL = 'http://localhost:4000/v1/chat/completions';
 const ACTIVE_MODEL_PATH = '/home/korvin/korvin/data/active_model.txt';
+const TOKEN_WARNING_PATH = '/home/korvin/korvin/data/token_warning_threshold.txt';
+const CHAT_TIMEOUT_PATH = '/home/korvin/korvin/data/chat_timeout.txt';
 
 function getActiveModel() {
   try {
@@ -9,13 +12,29 @@ function getActiveModel() {
   }
 }
 
+function readTokenWarningThreshold() {
+  try {
+    return parseInt(fs.readFileSync(TOKEN_WARNING_PATH, 'utf8').trim(), 10) || 5000;
+  } catch (_) {
+    return 5000;
+  }
+}
+
+function readChatTimeout() {
+  try {
+    const val = parseInt(fs.readFileSync(CHAT_TIMEOUT_PATH, 'utf8').trim(), 10);
+    return val >= 10 ? val : 180;   // minimum 10 seconds
+  } catch (_) {
+    return 180;
+  }
+}
+
 const API_KEY = process.env.LITELLM_MASTER_KEY;
 if (!API_KEY) throw new Error('LITELLM_MASTER_KEY not set in /etc/korvin.env');
 
 const { sanitize: defendSanitize } = require('../security/defender');
 const { sanitize: inputSanitize } = require('../middleware/sanitizer');
 const { execSync } = require('child_process');
-const fs = require('fs');
 
 const SYSTEM_PROMPT = `You are Korvin, a self-hosted personal AI agent. You are helpful, conversational, and warm. The human you are speaking to is your operator and the person who installed you.
 
@@ -79,15 +98,27 @@ async function sendMessage(userMessage, chatId = 'default') {
 
   let response;
   for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timeoutMs = readChatTimeout() * 1000;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       response = await fetch(LITELLM_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-        body: JSON.stringify({ model: getActiveModel(), messages, temperature: 0.7, stream: false })
+        body: JSON.stringify({ model: getActiveModel(), messages, temperature: 0.7, stream: false }),
+        signal: controller.signal
       });
+      clearTimeout(timer);
       break;
     } catch (err) {
-      if (attempt === 0 && err.code === 'ECONNREFUSED') {
+      clearTimeout(timer);
+      if (err.name === 'AbortError') {
+        if (attempt === 0) {
+          await new Promise(r => setTimeout(r, 3000));
+        } else {
+          throw new Error(`LiteLLM timed out after ${readChatTimeout()} seconds`);
+        }
+      } else if (attempt === 0 && err.code === 'ECONNREFUSED') {
         await new Promise(r => setTimeout(r, 3000));
       } else {
         throw err;
@@ -99,7 +130,8 @@ async function sendMessage(userMessage, chatId = 'default') {
   const reply = data.choices[0].message.content;
 
   const used = (data.usage && data.usage.total_tokens) || 0;
-  const budgetWarning = used > 5000
+  const threshold = readTokenWarningThreshold();
+  const budgetWarning = used > threshold
     ? `\n\n_💰 This response used ${used.toLocaleString()} tokens (~$${((used / 1_000_000) * 0.87).toFixed(4)}). Use /brief to reduce costs._`
     : '';
 
