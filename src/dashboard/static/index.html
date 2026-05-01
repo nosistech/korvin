@@ -329,6 +329,7 @@ let configMaxTokens = 128000;
 let autoRefreshTimer = null;
 let chatRefreshTimer = null;
 let chatRequestCount = 0;
+let chatIsLoading = false;
 const CHAT_RATE_LIMIT = 10;
 
 // ── Theme ──────────────────────────────────────────────────────────
@@ -774,6 +775,7 @@ async function switchModel(slug, btn) {
 
 // ── Chat ────────────────────────────────────────────────────────────
 async function loadChatHistory() {
+  if (chatIsLoading) return;
   const container = document.getElementById('chat-messages');
   try {
     const r = await fetch('/api/chat/history?limit=50', { headers: AUTH });
@@ -789,14 +791,16 @@ async function loadChatHistory() {
 }
 
 async function sendChat() {
+  chatIsLoading = true;
   const input = document.getElementById('chat-input');
   const btn   = document.getElementById('chat-send-btn');
   const msg   = input.value.trim();
-  if (!msg) return;
+  if (!msg) { chatIsLoading = false; return; }
 
   chatRequestCount++;
   if (chatRequestCount > CHAT_RATE_LIMIT) {
     appendChatMessage('system', 'Rate limit reached. Please wait a minute.');
+    chatIsLoading = false;
     return;
   }
 
@@ -821,6 +825,7 @@ async function sendChat() {
   } catch(e) {
     appendChatMessage('system', 'Error: ' + e.message);
   }
+  chatIsLoading = false;
   btn.disabled = false;
 }
 
