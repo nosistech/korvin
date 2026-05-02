@@ -23,7 +23,7 @@ This is what "no lock-in" means in practice.
 ## What Korvin Does
 
 - **Talks to you by voice** — Whisper tiny.en for speech-to-text (~2s response), Kokoro TTS for audio replies
-- **Answers questions and runs research** — web search, document drafting, inbox summarization
+- **Answers questions and runs research** — web search; document drafting and inbox summarization are planned, not yet live
 - **Runs security scans** — VirusTotal lookup for URLs, IPs, and file hashes; weekly Lynis system audit
 - **Researches CVEs on demand** — `/patch openssl` returns severity scores and patch recommendations. Output is AI-generated and must be verified against official sources before acting on it.
 - **Works through Telegram** — WhatsApp, Discord, Signal coming
@@ -58,13 +58,16 @@ Korvin responds to these commands in Telegram:
 |---------|------|-------------|
 | `/scan <target>` | HIGH | VirusTotal lookup for a URL, IP, or file hash |
 | `/scan system` | HIGH | Display the latest Lynis security audit report |
-| `/patch <package>` | HIGH | LLM-researched CVE report with patch recommendations |
+| `/patch <package>` | HIGH | LLM CVE research -- severity scores and patch recommendations (verify against official sources) |
 | `/status` | — | VPS health — CPU, RAM, disk, uptime |
 | `/log` | — | Recent Korvin activity |
 | `/confirm <hash>` | — | Approve a pending HIGH-risk action |
 | `/cancel <hash>` | — | Cancel a pending HIGH-risk action |
 | `/pending` | — | List all active pending confirmations |
 | `/help` | — | Command menu |
+| `/brief` | — | Daily briefing summary |
+| `/grill` | — | Stress-test a claim or argument |
+| `Research <topic>` | — | Web research on any topic |
 
 > ⚠️ **Important:** `/scan` and `/patch` are intended for technical users only. `/patch` output is AI-generated and must be verified against official sources (NVD, vendor advisories) before acting on it. A clean `/scan` result means no engine flagged the target at scan time — it does not guarantee safety. Never act on either command's output without independent verification.
 
@@ -113,7 +116,7 @@ echo "0 2 * * 0 root lynis audit system --quick > /home/korvin/korvin/data/lynis
 npm install -g @nosistech/korvin
 ```
 
-> **Note:** The interactive setup wizard (`korvin init`) is on the roadmap and not yet available. After installing, follow the Manual Install steps below to configure your instance.
+> **Note:** This installs the Korvin JS SDK surface only -- not the full agent. The npm package does not include the Python dashboard, voice stack, LiteLLM proxy, or systemd services. To run the full agent, follow the Manual Install steps below. The `korvin init` setup wizard is on the roadmap and not yet available.
 
 **Manual Install (full control):**
 
@@ -370,6 +373,7 @@ All endpoints on `http://127.0.0.1:3002`.
 | GET | `/api/memory/context-window` | Token and message usage |
 | GET | `/api/memory/limit` | Current memory config |
 | GET | `/api/killswitch` | Current killswitch state |
+| GET | `/api/health` | Service health check |
 | GET | `/api/active-model` | Currently active model |
 | GET | `/api/models` | All configured models |
 
@@ -382,6 +386,13 @@ All endpoints on `http://127.0.0.1:3002`.
 | POST | `/api/memory/limit` | Save memory configuration |
 | POST | `/api/memory/prune` | Manually enforce memory limit |
 | POST | `/api/switch-model` | Switch the active model |
+| POST | `/api/chat` | Send a message via dashboard chat |
+| GET | `/api/chat/history` | Retrieve dashboard chat history |
+| POST | `/api/chat-timeout` | Set chat timeout value |
+| POST | `/api/token-warning-threshold` | Set token warning threshold |
+| GET | `/api/token-usage` | Token usage stats |
+| POST | `/api/token-rates` | Set token rate config |
+| POST | `/api/stt` | Submit audio for speech-to-text transcription |
 
 **Example calls:**
 
@@ -424,8 +435,8 @@ The bot and dashboard both run as the `korvin` system user — not root. LiteLLM
 **Port security checklist:**
 
 ```bash
-ss -tlnp | grep -E "3002|4000"
-# Both must show 127.0.0.1 — never 0.0.0.0
+ss -tlnp | grep -E "3000|3002|4000"
+# All must show 127.0.0.1 -- never 0.0.0.0
 ```
 
 **Never committed to git:**
@@ -436,6 +447,7 @@ data/              # SQLite memory database
 logs/              # Runtime logs
 *.wav / *.ogg      # Voice recordings
 /etc/korvin.env    # All API keys
+KORVIN.local.md    # Your personal agent config (identity, tone, rules)
 ```
 
 ---
@@ -454,7 +466,7 @@ korvin/
 │   ├── middleware/
 │   │   ├── confirmation-gate.js    # /confirm guard for HIGH-risk actions
 │   │   ├── sanitizer.js            # Prompt injection blocker
-│   │   └── skill-contract.js       # Structured skill return types
+│   │   └── skill-contract.js       # Structured skill return types (not yet wired)
 │   ├── security/
 │   │   └── defender.js             # Content sanitization (wired)
 │   ├── dashboard/
