@@ -71,7 +71,7 @@ Korvin responds to these commands in Telegram:
 **Why confirmation gates exist:**
 Every HIGH-risk command requires explicit `/confirm <hash>` before executing. This is an architectural constraint — not a prompt suggestion. The agent cannot bypass it. Pending actions expire after 5 minutes automatically.
 
-This design came directly from the 2026 PocketOS incident where an AI coding agent deleted a production database in 9 seconds because no confirmation step existed between the agent and destructive action.
+This design exists because autonomous agents without human checkpoints have caused irreversible data loss in documented production incidents. A confirmation gate is the difference between the agent tried and the agent did.
 
 **Example `/scan` flow:**
 
