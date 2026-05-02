@@ -124,6 +124,8 @@ npm install -g @nosistech/korvin
 # 1. Clone the repo
 git clone https://github.com/nosistech/korvin.git
 cd korvin
+# IMPORTANT: Several internal paths are hardcoded to /home/korvin/korvin
+# Clone into that exact path or update the paths in gateway.js, telegram-bot.js, and src/dashboard/main.py before running
 
 # 2. Install Node dependencies
 npm install
@@ -150,7 +152,7 @@ Edit `config.json`:
   "memory_strategy": "sliding_window",
   "summarizer_url": "http://localhost:4000/v1/chat/completions",
   "summarizer_model": "YOUR_MODEL_NAME",
-  "summarizer_fallback": "sliding_window",
+  "summarizer_fallback": "sliding_window", // planned -- not yet wired in code
   "litellm_master_key": "YOUR_LITELLM_MASTER_KEY"
 }
 ```
@@ -234,6 +236,18 @@ KORVIN_API_KEY=your_dashboard_api_key
 VIRUSTOTAL_API_KEY=your_virustotal_key
 LITELLM_MASTER_KEY=your_litellm_master_key
 ```
+
+---
+
+## Dashboard Architecture
+
+Korvin runs two separate dashboard stacks:
+
+**Express dashboard (port 3000)** -- embedded inside the Telegram bot process. Starts automatically when the bot starts. Exposes a single internal endpoint (`GET /api/system`) that the `/status` command uses to read CPU, RAM, disk, and uptime. Never exposed externally. No auth required -- loopback only.
+
+**FastAPI dashboard (port 3002)** -- a separate Python process managed by `korvin-dashboard.service`. This is the full web UI at `dashboard.korvin.cloud` -- chat, memory browser, model switcher, logs, token usage, settings. Requires `X-Korvin-Key` on write endpoints. Exposed via Cloudflare Tunnel with Access OTP.
+
+The two stacks are independent. The bot runs without the FastAPI dashboard. The FastAPI dashboard runs without the bot. Port 3000 is internal only. Port 3002 is the one you expose through Cloudflare.
 
 ---
 
@@ -346,6 +360,8 @@ Configure in `config.json`:
   "summarizer_model": "your-model-name"
 }
 ```
+
+> **Note:** `memory_limit` in `config.example.json` is 46. If `config.json` is missing or the key is absent, the code defaults to 100. Set this explicitly in your config.
 
 Token limits by model:
 
