@@ -72,7 +72,7 @@ def root():
 
 @app.get("/api/status")
 def status():
-    return {"korvin": "online", "version": "0.1.0", "memory": "sqlite"}
+    return {"korvin": "online", "version": "0.1.1", "memory": "sqlite"}
 
 @app.get("/api/health")
 def health_check():
@@ -458,7 +458,7 @@ def chat(body: ChatRequest):
                 "Authorization": f"Bearer {litellm_key}"
             },
             json={
-                "model": "deepseek-v4-pro",
+                "model": _read_active_model(),
                 "messages": messages,
                 "temperature": 0.7,
                 "stream": False
