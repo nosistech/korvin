@@ -236,16 +236,12 @@ MODEL_LABELS = {
     "deepseek-v4-pro": "DeepSeek V4 Pro",
     "deepseek-v4-flash": "DeepSeek V4 Flash",
     "gemini-flash": "Gemini Flash",
-    "ollama-qwen": "Local — Qwen 2.5",
-    "ollama-deepseek-coder": "Local — DeepSeek Coder",
 }
 
 MODEL_WHITELIST = {
     "deepseek-v4-pro":      "openai/deepseek-v4-pro",
     "deepseek-v4-flash":    "openai/deepseek-v4-flash",
     "gemini-flash":         "gemini/gemini-2.5-flash",
-    "ollama-qwen":          "ollama/qwen2.5:7b",
-    "ollama-deepseek-coder": "ollama/deepseek-coder:6.7b",
 }
 
 def _read_active_model():
@@ -352,8 +348,6 @@ DEFAULT_RATES = {
     "deepseek-v4-pro": 0.27,
     "deepseek-v4-flash": 0.07,
     "gemini-flash": 0.15,
-    "ollama-qwen": 0.0,
-    "ollama-deepseek-coder": 0.0,
 }
 
 def _read_token_usage():
