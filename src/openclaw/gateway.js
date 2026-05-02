@@ -150,4 +150,4 @@ async function sendMessage(userMessage, chatId = 'default') {
   return reply + budgetWarning;
 }
 
-module.exports = { sendMessage };
+module.exports = { sendMessage, getActiveModel };

@@ -5,7 +5,7 @@
 
 const TelegramBot = require('node-telegram-bot-api');
 const { exec, execSync } = require('child_process');
-const { sendMessage } = require('./gateway');
+const { sendMessage, getActiveModel } = require('./gateway');
 const { researchTopic } = require('../skills/research');
 const fs = require('fs');
 const path = require('path');
@@ -126,7 +126,7 @@ function getSystemStatus() {
   try {
     const sys = JSON.parse(execSync('curl -s --max-time 2 http://localhost:3000/api/system').toString());
     return `🟢 *Korvin Online*\n` +
-      `🧠 Model: deepseek-v4-pro\n` +
+      `🧠 Model: ${getActiveModel()}\n` +
       `💾 Disk: ${sys.disk_used} / ${sys.disk_total} (${sys.disk_pct})\n` +
       `🧮 RAM: ${sys.mem_used_mb} MB / ${sys.mem_total_mb} MB (${sys.mem_pct}%)\n` +
       `📊 CPU Load: ${sys.load_1m} / ${sys.load_5m} / ${sys.load_15m}\n` +
@@ -141,6 +141,7 @@ function getSystemStatus() {
       disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().trim();
     } catch (_) {}
     return `🟡 *Korvin Online* _(dashboard offline)_\n` +
+      `🧠 Model: ${getActiveModel()}\n` +
       `🧮 RAM: ${(used/1024/1024).toFixed(0)} MB / ${(total/1024/1024).toFixed(0)} MB (${((used/total)*100).toFixed(1)}%)\n` +
       `💾 Disk: ${disk}\n` +
       `📊 CPU Load: ${load[0].toFixed(2)} / ${load[1].toFixed(2)} / ${load[2].toFixed(2)}\n` +
