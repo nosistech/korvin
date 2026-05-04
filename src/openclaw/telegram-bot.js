@@ -5,7 +5,7 @@
 
 const TelegramBot = require('node-telegram-bot-api');
 const { exec, execSync } = require('child_process');
-const { sendMessage, getActiveModel, addPreference, getPreferences } = require('./gateway');
+const { sendMessage, getActiveModel, addPreference, getPreferences, removePreference, clearPreferences } = require('./gateway');
 const { researchTopic } = require('../skills/research');
 const fs = require('fs');
 const path = require('path');
@@ -231,6 +231,56 @@ bot.onText(/\/pending/, (msg) => {
 const commandDeps = { confirmationGate, logActivity };
 registerPatch(bot, commandDeps);
 registerScan(bot, commandDeps);
+
+// ── Rule Management ────────────────────────────────────────────────────────
+
+bot.onText(/\/rule(?: (.+))?/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const command = match[1] ? match[1].trim() : '';
+
+  if (command === '') {
+    await bot.sendMessage(chatId, 'Usage:\n/rule add <rule text>\n/rule list\n/rule remove <number>\n/rule clear');
+    return;
+  }
+
+  const parts = command.split(' ');
+  const sub = parts[0].toLowerCase();
+  const rest = parts.slice(1).join(' ');
+
+  if (sub === 'list') {
+    const prefs = getPreferences();
+    if (prefs.length === 0) {
+      await bot.sendMessage(chatId, 'No rules set.');
+    } else {
+      const list = prefs.map((r, i) => `${i+1}. ${r}`).join('\n');
+      await bot.sendMessage(chatId, `Current rules:\n${list}`);
+    }
+  } else if (sub === 'add') {
+    if (!rest) {
+      await bot.sendMessage(chatId, 'Please provide the rule text. Example: /rule add always use plain paragraphs.');
+      return;
+    }
+    addPreference(rest);
+    await bot.sendMessage(chatId, `Rule added: "${rest}"`);
+  } else if (sub === 'remove') {
+    const num = parseInt(rest, 10);
+    if (isNaN(num)) {
+      await bot.sendMessage(chatId, 'Usage: /rule remove <number>');
+      return;
+    }
+    const removed = removePreference(num);
+    if (removed) {
+      await bot.sendMessage(chatId, `Removed rule ${num}: "${removed}"`);
+    } else {
+      await bot.sendMessage(chatId, `No rule found with number ${num}. Use /rule list to see existing rules.`);
+    }
+  } else if (sub === 'clear') {
+    clearPreferences();
+    await bot.sendMessage(chatId, 'All rules cleared.');
+  } else {
+    await bot.sendMessage(chatId, 'Unknown subcommand. Use /rule list, /rule add, /rule remove, /rule clear.');
+  }
+});
 
 // ── Text Handler ──────────────────────────────────────────────────────────────
 

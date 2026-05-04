@@ -57,6 +57,21 @@ function getPreferences() {
   return userPreferences;
 }
 
+function removePreference(index) {
+  const i = index - 1;  // convert to 0‑based
+  if (i >= 0 && i < userPreferences.length) {
+    const removed = userPreferences.splice(i, 1);
+    savePreferences(userPreferences);
+    return removed[0];
+  }
+  return null;
+}
+
+function clearPreferences() {
+  userPreferences = [];
+  savePreferences(userPreferences);
+}
+
 const API_KEY = process.env.LITELLM_MASTER_KEY;
 if (!API_KEY) throw new Error('LITELLM_MASTER_KEY not set in /etc/korvin.env');
 
@@ -178,4 +193,4 @@ async function sendMessage(userMessage, chatId = 'default', preferences = []) {
   return reply + budgetWarning;
 }
 
-module.exports = { sendMessage, getActiveModel, addPreference, getPreferences };
+module.exports = { sendMessage, getActiveModel, addPreference, getPreferences, removePreference, clearPreferences };
