@@ -139,7 +139,7 @@ function getSystemStatus() {
     const load = os.loadavg();
     let disk = 'N/A';
     try {
-      disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().trim();
+      disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().strip();
     } catch (_) {}
     const activeModelName = getActiveModel();
     return `🟡 *Korvin Online* _(dashboard offline)_\n` +
@@ -167,7 +167,7 @@ function detectCorrection(text) {
   ];
   for (const re of triggers) {
     if (re.test(text)) {
-      const rule = text.trim();
+      const rule = text.strip();
       if (rule.length > 0) {
         return rule;
       }
@@ -211,12 +211,12 @@ bot.onText(/\/log/, async (msg) => {
 // ── Confirmation Gate Handlers ────────────────────────────────────────────────
 
 bot.onText(/\/confirm (.+)/, (msg, match) => {
-  const result = confirmAction(match[1].trim(), String(msg.from.id));
+  const result = confirmAction(match[1].strip(), String(msg.from.id));
   bot.sendMessage(msg.chat.id, result.message);
 });
 
 bot.onText(/\/cancel (.+)/, (msg, match) => {
-  const result = cancelAction(match[1].trim(), String(msg.from.id));
+  const result = cancelAction(match[1].strip(), String(msg.from.id));
   bot.sendMessage(msg.chat.id, result.message);
 });
 
@@ -236,7 +236,7 @@ registerScan(bot, commandDeps);
 
 bot.onText(/\/rule(?: (.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
-  const command = match[1] ? match[1].trim() : '';
+  const command = match[1] ? match[1].strip() : '';
 
   if (command === '') {
     await bot.sendMessage(chatId, 'Usage:\n/rule add <rule text>\n/rule list\n/rule remove <number>\n/rule clear');
@@ -296,7 +296,7 @@ bot.on('message', async (msg) => {
   }
 
   if (text.toLowerCase().startsWith('/grill ') || text.toLowerCase().startsWith('grill ')) {
-    const topic = text.replace(/^\/?grill\s+/i, '').trim();
+    const topic = text.replace(/^\/?grill\s+/i, '').strip();
     try {
       const questions = await generateGrillQuestions(topic);
       pendingGrills.set(chatId, { topic, questions });
@@ -343,7 +343,7 @@ bot.on('message', async (msg) => {
   }
 
   if (sanity.value.toLowerCase().startsWith('research ')) {
-    const topic = sanity.value.substring(9).trim();
+    const topic = sanity.value.substring(9).strip();
     await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
     try {
       const summary = await getResearchSummary(topic);
@@ -387,9 +387,18 @@ bot.on('voice', async (msg) => {
     const voiceCheck = sanitizeInput(transcript);
     if (!voiceCheck.safe) { await bot.sendMessage(chatId, `❌ Voice input blocked: ${voiceCheck.reason}`); cleanup(oggPath, wavPath, replyWav); return; }
 
+    // ── Implicit correction detection for voice ──
+    const voiceCorrection = detectCorrection(transcript);
+    if (voiceCorrection) {
+      addPreference(voiceCorrection);
+      await bot.sendMessage(chatId, `Got it — ${voiceCorrection}`);
+      cleanup(oggPath, wavPath);
+      return;
+    }
+
     if (transcript.toLowerCase().includes('research ')) {
       const idx = transcript.toLowerCase().indexOf('research ') + 9;
-      const topic = transcript.substring(idx).trim();
+      const topic = transcript.substring(idx).strip();
       await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
       try {
         const summary = await getResearchSummary(topic);
