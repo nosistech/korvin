@@ -59,7 +59,7 @@ import warnings, whisper
 warnings.filterwarnings('ignore')
 m = whisper.load_model('tiny.en')
 r = m.transcribe('${audioPath}', fp16=False)
-print(r['text'].strip())
+print(r['text'].trim())
 "`,
     { encoding: 'utf8', stderr: 'pipe' }
   ).trim();
@@ -139,7 +139,7 @@ function getSystemStatus() {
     const load = os.loadavg();
     let disk = 'N/A';
     try {
-      disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().strip();
+      disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().trim();
     } catch (_) {}
     const activeModelName = getActiveModel();
     return `🟡 *Korvin Online* _(dashboard offline)_\n` +
@@ -167,7 +167,7 @@ function detectCorrection(text) {
   ];
   for (const re of triggers) {
     if (re.test(text)) {
-      const rule = text.strip();
+      const rule = text.trim();
       if (rule.length > 0) {
         return rule;
       }
@@ -211,12 +211,12 @@ bot.onText(/\/log/, async (msg) => {
 // ── Confirmation Gate Handlers ────────────────────────────────────────────────
 
 bot.onText(/\/confirm (.+)/, (msg, match) => {
-  const result = confirmAction(match[1].strip(), String(msg.from.id));
+  const result = confirmAction(match[1].trim(), String(msg.from.id));
   bot.sendMessage(msg.chat.id, result.message);
 });
 
 bot.onText(/\/cancel (.+)/, (msg, match) => {
-  const result = cancelAction(match[1].strip(), String(msg.from.id));
+  const result = cancelAction(match[1].trim(), String(msg.from.id));
   bot.sendMessage(msg.chat.id, result.message);
 });
 
@@ -236,7 +236,7 @@ registerScan(bot, commandDeps);
 
 bot.onText(/\/rule(?: (.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
-  const command = match[1] ? match[1].strip() : '';
+  const command = match[1] ? match[1].trim() : '';
 
   if (command === '') {
     await bot.sendMessage(chatId, 'Usage:\n/rule add <rule text>\n/rule list\n/rule remove <number>\n/rule clear');
@@ -296,7 +296,7 @@ bot.on('message', async (msg) => {
   }
 
   if (text.toLowerCase().startsWith('/grill ') || text.toLowerCase().startsWith('grill ')) {
-    const topic = text.replace(/^\/?grill\s+/i, '').strip();
+    const topic = text.replace(/^\/?grill\s+/i, '').trim();
     try {
       const questions = await generateGrillQuestions(topic);
       pendingGrills.set(chatId, { topic, questions });
@@ -343,7 +343,7 @@ bot.on('message', async (msg) => {
   }
 
   if (sanity.value.toLowerCase().startsWith('research ')) {
-    const topic = sanity.value.substring(9).strip();
+    const topic = sanity.value.substring(9).trim();
     await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
     try {
       const summary = await getResearchSummary(topic);
@@ -398,7 +398,7 @@ bot.on('voice', async (msg) => {
 
     if (transcript.toLowerCase().includes('research ')) {
       const idx = transcript.toLowerCase().indexOf('research ') + 9;
-      const topic = transcript.substring(idx).strip();
+      const topic = transcript.substring(idx).trim();
       await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
       try {
         const summary = await getResearchSummary(topic);
