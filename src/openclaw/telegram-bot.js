@@ -59,7 +59,7 @@ import warnings, whisper
 warnings.filterwarnings('ignore')
 m = whisper.load_model('tiny.en')
 r = m.transcribe('${audioPath}', fp16=False)
-print(r['text'].trim())
+print(r['text'].strip())
 "`,
     { encoding: 'utf8', stderr: 'pipe' }
   ).trim();
