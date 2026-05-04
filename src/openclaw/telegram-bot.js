@@ -5,7 +5,7 @@
 
 const TelegramBot = require('node-telegram-bot-api');
 const { exec, execSync } = require('child_process');
-const { sendMessage, getActiveModel } = require('./gateway');
+const { sendMessage, getActiveModel, addPreference, getPreferences } = require('./gateway');
 const { researchTopic } = require('../skills/research');
 const fs = require('fs');
 const path = require('path');
@@ -125,8 +125,9 @@ async function getResearchSummary(topic) {
 function getSystemStatus() {
   try {
     const sys = JSON.parse(execSync('curl -s --max-time 2 http://localhost:3000/api/system').toString());
+    const activeModelName = getActiveModel();
     return `🟢 *Korvin Online*\n` +
-      `🧠 Model: ${getActiveModel()}\n` +
+      `🧠 Model: ${activeModelName}\n` +
       `💾 Disk: ${sys.disk_used} / ${sys.disk_total} (${sys.disk_pct})\n` +
       `🧮 RAM: ${sys.mem_used_mb} MB / ${sys.mem_total_mb} MB (${sys.mem_pct}%)\n` +
       `📊 CPU Load: ${sys.load_1m} / ${sys.load_5m} / ${sys.load_15m}\n` +
@@ -140,13 +141,39 @@ function getSystemStatus() {
     try {
       disk = execSync("df -h / | tail -1 | awk '{print $3\"/\"$2\" (\"$5\")\"}'" ).toString().trim();
     } catch (_) {}
+    const activeModelName = getActiveModel();
     return `🟡 *Korvin Online* _(dashboard offline)_\n` +
-      `🧠 Model: ${getActiveModel()}\n` +
+      `🧠 Model: ${activeModelName}\n` +
       `🧮 RAM: ${(used/1024/1024).toFixed(0)} MB / ${(total/1024/1024).toFixed(0)} MB (${((used/total)*100).toFixed(1)}%)\n` +
       `💾 Disk: ${disk}\n` +
       `📊 CPU Load: ${load[0].toFixed(2)} / ${load[1].toFixed(2)} / ${load[2].toFixed(2)}\n` +
       `⏱ Uptime: ${(os.uptime()/3600).toFixed(1)}h`;
   }
+}
+
+// ── Implicit Correction Detection ─────────────────────────────────────────────
+
+function detectCorrection(text) {
+  const triggers = [
+    /\b(?:don'?t|do not)\b/i,
+    /\bstop\b/i,
+    /\bnext time\b/i,
+    /\bfrom now on\b/i,
+    /\balways\b/i,
+    /\bnever\b/i,
+    /\binstead of\b/i,
+    /\bprefer\b/i,
+    /\bplease\b/i,
+  ];
+  for (const re of triggers) {
+    if (re.test(text)) {
+      const rule = text.trim();
+      if (rule.length > 0) {
+        return rule;
+      }
+    }
+  }
+  return null;
 }
 
 // ── Command Handlers ──────────────────────────────────────────────────────────
@@ -212,14 +239,12 @@ bot.on('message', async (msg) => {
   const text = msg.text;
   if (!text || msg.voice) return;
 
-  // ── Brief mode toggle ──
   if (text.toLowerCase().startsWith('/brief')) {
     briefMode = !briefMode;
     await bot.sendMessage(chatId, briefMode ? '✅ Brief mode ON — one-sentence answers.' : '✅ Brief mode OFF — normal replies.');
     return;
   }
 
-  // ── Grill Mode — ask clarifying questions before research ──
   if (text.toLowerCase().startsWith('/grill ') || text.toLowerCase().startsWith('grill ')) {
     const topic = text.replace(/^\/?grill\s+/i, '').trim();
     try {
@@ -232,7 +257,6 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  // ── Pending grill answers — user replied to earlier grill questions ──
   if (pendingGrills.has(chatId)) {
     const grill = pendingGrills.get(chatId);
     pendingGrills.delete(chatId);
@@ -260,6 +284,14 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  // ── Implicit correction detection ──
+  const correctionRule = detectCorrection(sanity.value);
+  if (correctionRule) {
+    addPreference(correctionRule);
+    await bot.sendMessage(chatId, `Got it — ${correctionRule}`);
+    return;
+  }
+
   if (sanity.value.toLowerCase().startsWith('research ')) {
     const topic = sanity.value.substring(9).trim();
     await bot.sendMessage(chatId, `🔍 Researching "${topic}" …`);
@@ -273,10 +305,11 @@ bot.on('message', async (msg) => {
   }
 
   try {
+    const currentPreferences = getPreferences();
     const msgToSend = briefMode
       ? `[BRIEF MODE: Answer in one sentence, no preamble, no filler. Just the essential information.] ${text}`
       : text;
-    const reply = cleanReply(await sendMessage(msgToSend, String(chatId)));
+    const reply = cleanReply(await sendMessage(msgToSend, String(chatId), currentPreferences));
     await bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
   } catch (err) {
     await bot.sendMessage(chatId, formatError('process your message', err));
@@ -320,7 +353,8 @@ bot.on('voice', async (msg) => {
       return;
     }
 
-    const reply = cleanReply(await sendMessage(transcript, String(chatId)));
+    const currentPreferences = getPreferences();
+    const reply = cleanReply(await sendMessage(transcript, String(chatId), currentPreferences));
     console.log('Reply:', reply);
     await generateSpeech(reply, replyWav);
     await bot.sendVoice(chatId, replyWav);
@@ -339,7 +373,6 @@ bot.on('voice', async (msg) => {
   await startDashboard();
   console.log('Korvin bot started. /help for commands.');
 
-  // Pre‑warm Whisper tiny.en so first voice message is fast (~3 seconds instead of ~15)
   setTimeout(() => {
     try {
       execSync(
