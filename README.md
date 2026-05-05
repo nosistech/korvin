@@ -74,7 +74,7 @@ Instead of typing into Telegram or a browser, you speak out loud. The client:
   responds in a natural voice through your speakers, no keyboard needed.
 - *Intermediate:* You say "Hey Korvin, research recent news about AI regulation" —
   Korvin processes the request and reads back a summary.
-- *- *Advanced:* You say "Hey Korvin, what did we discuss        yesterday?" — Korvin searches its conversation memory and summarizes the relevant context verbally.
+- *- *Advanced:* You say "Hey Korvin, what did we discuss         yesterday?" — Korvin searches its conversation memory and  summarizes the relevant context verbally.
   what you find" — Korvin executes the command, waits for results, and reports back verbally.
 
 **Requirements:**
