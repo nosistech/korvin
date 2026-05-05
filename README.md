@@ -52,6 +52,114 @@ To switch models, change the model name in the `transcribe` function inside `src
 
 ---
 
+## Local Voice Client (Windows) — Experimental
+
+Korvin includes an optional local voice client for Windows (`korvin-voice.py`). This is a
+separate tool from the core agent — it is not part of the npm package and requires its own
+setup. It is intended for users who want a hands-free desktop experience: speak naturally,
+Korvin listens, thinks, and talks back.
+
+**What it does in plain terms:**
+
+Instead of typing into Telegram or a browser, you speak out loud. The client:
+1. Listens for a wake phrase (configurable, default: "Hey Korvin")
+2. Records what you say after the wake phrase
+3. Sends the audio to your VPS for transcription
+4. Gets a response from your AI model
+5. Speaks the response back through your speakers
+
+**Examples of what this looks like in practice:**
+
+- *Beginner:* You say "Hey Korvin, what is the weather like in my city?" — Korvin
+  responds in a natural voice through your speakers, no keyboard needed.
+- *Intermediate:* You say "Hey Korvin, research recent news about AI regulation" —
+  Korvin processes the request and reads back a summary.
+- *- *Advanced:* You say "Hey Korvin, what did we discuss        yesterday?" — Korvin searches its conversation memory and summarizes the relevant context verbally.
+  what you find" — Korvin executes the command, waits for results, and reports back verbally.
+
+**Requirements:**
+- Windows 10 or 11
+- Python 3.11 specifically (3.12 and 3.14 have compatibility issues with the audio stack)
+- A running KORVIN VPS with the dashboard and STT endpoint active
+- Cloudflare Service Token (if your dashboard is behind Cloudflare Access)
+
+**Setup (one time):**
+
+```bash
+py -3.11 -m venv C:\korvin-voice-env
+C:\korvin-voice-env\Scripts\Activate.ps1
+pip install openwakeword sounddevice numpy pyaudio requests keyboard pyttsx3
+python korvin-voice.py
+```
+
+The client will prompt you for your API key and Cloudflare credentials on first run and
+save them locally in `korvin_voice_config.json`. Your credentials are never committed to git.
+
+**Push-to-talk alternative (recommended for most users):**
+
+If the wake word setup feels complex, use `Ctrl+Space` instead. Press it, speak, release.
+No Python install, no venv, no model downloads. This works out of the box and is the
+recommended default for most users.
+
+---
+
+### ⚠️ Privacy and Security Notice — Local Voice Client
+
+Read this before running the voice client, especially in a professional or enterprise
+environment.
+
+**Continuous microphone access:**
+
+When the voice client is running, it listens to your microphone continuously for as long
+as the process is active. This is how wake word detection works. Audio is processed
+entirely on your local machine by the openWakeWord library — nothing is transmitted
+anywhere during the listening phase.
+
+Once the wake phrase is detected, your speech is recorded and sent to your VPS for
+transcription. The transcribed text is then sent to whichever AI model you have configured.
+
+**What this means depending on your setup:**
+
+- *Self-hosted model (local LLM via Ollama or similar):* Your audio goes to your VPS,
+  gets transcribed locally, and the text is processed by a model running on your own
+  hardware. Nothing leaves your infrastructure.
+
+- *Third-party AI provider:* Your transcribed text is sent to that provider's servers
+  for processing. This is equivalent to typing into their API — the content of your
+  request is transmitted to and processed by their infrastructure, subject to their
+  data retention and privacy policies. Review each provider's terms before using Korvin
+  with sensitive information.
+
+- *Hybrid setup (self-hosted VPS + third-party LLM):* Audio transcription stays on your
+  VPS. The resulting text leaves your infrastructure when it reaches the LLM provider.
+
+**Even with a fully self-hosted setup, consider these risks:**
+
+- Your VPS provider has physical access to the server. A compromised VPS means a
+  compromised conversation history.
+- SQLite memory stores conversations in plaintext. Anyone with VPS access can read
+  your full conversation history.
+- The voice client runs as your Windows user. Any process on your machine with
+  sufficient privileges could access the microphone at the same time.
+- If the wake word client is running during meetings, calls, or sensitive conversations,
+  the microphone is open — even when not triggered. Audio does not leave your machine
+  during the listening phase, but the microphone is active.
+
+**Recommended practices:**
+
+- Stop the voice client when not in use (`Ctrl+C` in the terminal)
+- Never run the voice client during confidential meetings or legal proceedings
+- If using a third-party LLM provider, avoid speaking personally identifiable
+  information, financial data, or confidential business details through the voice client
+- Review your LLM provider's data retention policy before any production use
+- Use a self-hosted model if privacy is a strict requirement
+
+**Audio handling:** Korvin does not store audio files. Audio is converted to text on
+your VPS and discarded immediately. The temporary file created during transcription is
+deleted after each use. Only the transcribed text enters conversation memory.
+
+---
+
 ## Commands
 
 Korvin responds to these commands in Telegram:
@@ -537,4 +645,4 @@ MIT License — free for personal, educational, and commercial use. Copies of th
 
 ---
 
-*Built by NosisTech — Cloud Security · AI Governance*
+*Built by NosisTech — Cloud  · AI *
