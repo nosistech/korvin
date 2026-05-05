@@ -1,28 +1,28 @@
-# Korvin
+# KORVIN
 
 **Self-hosted personal AI agent. Voice-first. Memory-persistent. No lock-in.**
 
-Korvin runs on your own machine or a $5 VPS. You bring your API keys. You own your data. No third party ever touches your messages, credentials, or billing.
+KORVIN is self-hosted. You choose where your data goes and which providers, if any, receive requests. You bring your API keys. You own your data.
 
-> ⚠️ **Claude Code users:** If you use Anthropic's Claude Code CLI inside this repo, run it with `ANTHROPIC_API_KEY=your-key claude` instead of your claude.ai subscription. Korvin's source includes directories named `src/openclaw/` and `src/hermes/` (MIT-licensed dependencies) which trigger Anthropic's third-party harness billing detection. A `.claudeignore` file is included to mitigate this, but using an explicit API key is the safest approach. See [Anthropic's billing policy](https://support.claude.ai) for context.
-
-> ⚠️ **For non-technical users:** This is self-hosted software that requires a VPS, basic command-line familiarity, and your own API keys. If terms like "SSH," "systemd," or "environment variables" are unfamiliar, consider asking a technical friend to help with the initial setup. The agent itself is designed to be voice-driven and simple — getting it running is the hardest part.
+> ⚠️ **Claude Code users:** If you use Anthropic's Claude Code CLI inside this repo, run it with `ANTHROPIC_API_KEY=your-key claude` instead of your claude.ai subscription. KORVIN's source includes directories named `src/openclaw/` and `src/hermes/` (MIT-licensed dependencies) which trigger Anthropic's third-party harness billing detection. A `.claudeignore` file is included to mitigate this, but using an explicit API key is the safest approach. See [Anthropic's billing policy](https://support.claude.ai) for context.
+>
+> ⚠️ **For non-technical users:** This is self-hosted software that requires a VPS, basic command-line familiarity, and your own API keys. If terms like "SSH," "systemd," or "environment variables" are unfamiliar, consider asking a technical friend to help with the initial setup. The agent itself is designed to be voice-driven and simple. Getting it running is the hardest part.
 
 ---
 
-## What Is Korvin?
+## What Is KORVIN?
 
-Korvin is an AI agent you install and run yourself. It listens, thinks, remembers, and acts — through Telegram, voice, or any channel you configure.
+KORVIN is an AI agent you install and run yourself. It listens, thinks, remembers, and acts through Telegram, voice, or any channel you configure.
 
 Most AI assistants are cloud services. Your conversations live on someone else's server. Your data trains someone else's model. You pay monthly for access you do not control.
 
-Korvin is different. Every message stays on your machine. Every setting is a config file you can read and edit. If you want to switch from DeepSeek to Claude to a local Llama model, you change one line. No migration. No support ticket. No vendor permission required.
+KORVIN is different. Every message stays on your machine. Every setting is a config file you can read and edit. If you want to switch from DeepSeek to Claude to a local Llama model, you change one line. No migration. No support ticket. No vendor permission required.
 
 This is what "no lock-in" means in practice.
 
 ---
 
-## What Korvin Does
+## What KORVIN Does
 
 - **Talks to you by voice** — Whisper tiny.en for speech-to-text (~2s response), Kokoro TTS for audio replies
 - **Answers questions and runs research** — web search; document drafting and inbox summarization are planned, not yet live
@@ -32,13 +32,68 @@ This is what "no lock-in" means in practice.
 - **Remembers your conversations** — persistent SQLite memory with configurable limits
 - **Manages its own memory** — sliding window, summarization, or hard stop strategies
 - **Switches models instantly** — tap a model on the dashboard, the agent picks it up on the next message
-- **Runs on anything** — $5 VPS, local GPU machine, cloud VM, Raspberry Pi
+- **Runs on low-cost hardware** — $5 VPS, local GPU machine, cloud VM, Raspberry Pi
+
+---
+
+## Voice: What Works Today
+
+Voice support today centers on **Whisper** for speech-to-text and **Kokoro TTS** for text-to-speech.
+
+**Whisper** transcribes your speech into text. It runs on your VPS or local machine. The default model (`tiny.en`) responds in ~2 seconds on a $5 VPS or Raspberry Pi. Telegram voice messages are transcribed automatically by the bot.
+
+**Kokoro** turns KORVIN's text responses into spoken audio. It can run locally or on your VPS. The `bm_lewis` voice is the default.
+
+### Wake-Word and Push-to-Talk (Experimental)
+
+Wake-word and push-to-talk workflows are still being refined. For most users today, Telegram voice messages are the most reliable voice path.
+
+Experimental voice-client workflows for Windows are being explored. These should not be treated as turnkey setup.
+
+> ⚠️ **This is experimental.** Voice-client workflows are separate from the core agent. They are not part of the npm package and require platform-specific dependencies. Voice setup should be treated as a technical or experimental path rather than a turnkey onboarding experience. Full voice-client documentation will be added in a future release.
+
+**For most users today, Telegram voice messages are the recommended way to interact with KORVIN by voice.**
+
+---
+
+### ⚠️ Privacy and Security Notice — Local Voice Client
+
+Read this before running any voice client, especially in a professional or enterprise environment.
+
+**Continuous microphone access:**
+
+When wake-word detection is active, the microphone listens continuously. Audio is processed entirely on your local machine during the listening phase. Nothing is transmitted anywhere until the wake phrase is detected.
+
+Once the wake phrase is detected, your speech is recorded and sent to your VPS for transcription. The transcribed text is then sent to whichever AI model you have configured.
+
+**What this means depending on your setup:**
+
+- *Self-hosted model (local LLM via Ollama or similar):* Your audio goes to your VPS, gets transcribed locally, and the text is processed by a model running on your own hardware. Nothing leaves your infrastructure.
+- *Third-party AI provider:* Your transcribed text is sent to that provider's servers for processing. This is equivalent to typing into their API. The content of your request is transmitted to and processed by their infrastructure, subject to their data retention and privacy policies. Review each provider's terms before using KORVIN with sensitive information.
+- *Hybrid setup (self-hosted VPS + third-party LLM):* Audio transcription stays on your VPS. The resulting text leaves your infrastructure when it reaches the LLM provider.
+
+**Even with a fully self-hosted setup, consider these risks:**
+
+- Your VPS provider has physical access to the server. A compromised VPS means a compromised conversation history.
+- SQLite memory stores conversations in plaintext. Anyone with VPS access can read your full conversation history.
+- The voice client runs as your Windows user. Any process on your machine with sufficient privileges could access the microphone at the same time.
+- If the wake word client is running during meetings, calls, or sensitive conversations, the microphone is open even when not triggered. Audio does not leave your machine during the listening phase, but the microphone is active.
+
+**Recommended practices:**
+
+- Stop the voice client when not in use (`Ctrl+C` in the terminal)
+- Never run the voice client during confidential meetings or legal proceedings
+- If using a third-party LLM provider, avoid speaking personally identifiable information, financial data, or confidential business details through the voice client
+- Review your LLM provider's data retention policy before any production use
+- Use a self-hosted model if privacy is a strict requirement
+
+**Audio handling:** KORVIN does not store audio files. Audio is converted to text on your VPS and discarded immediately. The temporary file created during transcription is deleted after each use. Only the transcribed text enters conversation memory.
 
 ---
 
 ## Voice Optimization
 
-Korvin uses Whisper for speech-to-text. By default it loads `tiny.en` — an English-only model that is 4x faster and uses 75% less RAM than the standard `base` model.
+KORVIN uses Whisper for speech-to-text. By default it loads `tiny.en`, an English-only model that is 4x faster and uses 75% less RAM than the standard `base` model.
 
 | Model | Size | Response time | Best for |
 |-------|------|---------------|----------|
@@ -46,131 +101,23 @@ Korvin uses Whisper for speech-to-text. By default it loads `tiny.en` — an Eng
 | `base` | 145 MB | ~8s | Longer dictation |
 | `small` | 466 MB | ~20s | Best accuracy |
 
-`tiny.en` is the default because most Korvin interactions are short voice commands. It works on a $5 VPS or a Raspberry Pi without GPU. The model pre-loads at bot startup so even the first voice message responds in ~2 seconds instead of waiting for a cold start.
+`tiny.en` is the default because most KORVIN interactions are short voice commands. It works on a $5 VPS or a Raspberry Pi without GPU. The model pre-loads at bot startup so even the first voice message responds in ~2 seconds instead of waiting for a cold start.
 
 To switch models, change the model name in the `transcribe` function inside `src/openclaw/telegram-bot.js`.
 
 ---
 
-## Local Voice Client (Windows) — Experimental
-
-Korvin includes an optional local voice client for Windows (`korvin-voice.py`). This is a
-separate tool from the core agent — it is not part of the npm package and requires its own
-setup. It is intended for users who want a hands-free desktop experience: speak naturally,
-Korvin listens, thinks, and talks back.
-
-**What it does in plain terms:**
-
-Instead of typing into Telegram or a browser, you speak out loud. The client:
-1. Listens for a wake phrase (configurable, default: "Hey Korvin")
-2. Records what you say after the wake phrase
-3. Sends the audio to your VPS for transcription
-4. Gets a response from your AI model
-5. Speaks the response back through your speakers
-
-**Examples of what this looks like in practice:**
-
-- *Beginner:* You say "Hey Korvin, what is the weather like in my city?" — Korvin
-  responds in a natural voice through your speakers, no keyboard needed.
-- *Intermediate:* You say "Hey Korvin, research recent news about AI regulation" —
-  Korvin processes the request and reads back a summary.
-- *- *Advanced:* You say "Hey Korvin, what did we discuss         yesterday?" — Korvin searches its conversation memory and  summarizes the relevant context verbally.
-  what you find" — Korvin executes the command, waits for results, and reports back verbally.
-
-**Requirements:**
-- Windows 10 or 11
-- Python 3.11 specifically (3.12 and 3.14 have compatibility issues with the audio stack)
-- A running KORVIN VPS with the dashboard and STT endpoint active
-- Cloudflare Service Token (if your dashboard is behind Cloudflare Access)
-
-**Setup (one time):**
-
-```bash
-py -3.11 -m venv C:\korvin-voice-env
-C:\korvin-voice-env\Scripts\Activate.ps1
-pip install openwakeword sounddevice numpy pyaudio requests keyboard pyttsx3
-python korvin-voice.py
-```
-
-The client will prompt you for your API key and Cloudflare credentials on first run and
-save them locally in `korvin_voice_config.json`. Your credentials are never committed to git.
-
-**Push-to-talk alternative (recommended for most users):**
-
-If the wake word setup feels complex, use `Ctrl+Space` instead. Press it, speak, release.
-No Python install, no venv, no model downloads. This works out of the box and is the
-recommended default for most users.
-
----
-
-### ⚠️ Privacy and Security Notice — Local Voice Client
-
-Read this before running the voice client, especially in a professional or enterprise
-environment.
-
-**Continuous microphone access:**
-
-When the voice client is running, it listens to your microphone continuously for as long
-as the process is active. This is how wake word detection works. Audio is processed
-entirely on your local machine by the openWakeWord library — nothing is transmitted
-anywhere during the listening phase.
-
-Once the wake phrase is detected, your speech is recorded and sent to your VPS for
-transcription. The transcribed text is then sent to whichever AI model you have configured.
-
-**What this means depending on your setup:**
-
-- *Self-hosted model (local LLM via Ollama or similar):* Your audio goes to your VPS,
-  gets transcribed locally, and the text is processed by a model running on your own
-  hardware. Nothing leaves your infrastructure.
-
-- *Third-party AI provider:* Your transcribed text is sent to that provider's servers
-  for processing. This is equivalent to typing into their API — the content of your
-  request is transmitted to and processed by their infrastructure, subject to their
-  data retention and privacy policies. Review each provider's terms before using Korvin
-  with sensitive information.
-
-- *Hybrid setup (self-hosted VPS + third-party LLM):* Audio transcription stays on your
-  VPS. The resulting text leaves your infrastructure when it reaches the LLM provider.
-
-**Even with a fully self-hosted setup, consider these risks:**
-
-- Your VPS provider has physical access to the server. A compromised VPS means a
-  compromised conversation history.
-- SQLite memory stores conversations in plaintext. Anyone with VPS access can read
-  your full conversation history.
-- The voice client runs as your Windows user. Any process on your machine with
-  sufficient privileges could access the microphone at the same time.
-- If the wake word client is running during meetings, calls, or sensitive conversations,
-  the microphone is open — even when not triggered. Audio does not leave your machine
-  during the listening phase, but the microphone is active.
-
-**Recommended practices:**
-
-- Stop the voice client when not in use (`Ctrl+C` in the terminal)
-- Never run the voice client during confidential meetings or legal proceedings
-- If using a third-party LLM provider, avoid speaking personally identifiable
-  information, financial data, or confidential business details through the voice client
-- Review your LLM provider's data retention policy before any production use
-- Use a self-hosted model if privacy is a strict requirement
-
-**Audio handling:** Korvin does not store audio files. Audio is converted to text on
-your VPS and discarded immediately. The temporary file created during transcription is
-deleted after each use. Only the transcribed text enters conversation memory.
-
----
-
 ## Commands
 
-Korvin responds to these commands in Telegram:
+KORVIN responds to these commands in Telegram:
 
 | Command | Risk | Description |
 |---------|------|-------------|
 | `/scan <target>` | HIGH | VirusTotal lookup for a URL, IP, or file hash |
 | `/scan system` | HIGH | Display the latest Lynis security audit report |
-| `/patch <package>` | HIGH | LLM CVE research -- severity scores and patch recommendations (verify against official sources) |
-| `/status` | — | VPS health — CPU, RAM, disk, uptime |
-| `/log` | — | Recent Korvin activity |
+| `/patch <package>` | HIGH | LLM CVE research, severity scores, and patch recommendations (verify against official sources) |
+| `/status` | — | VPS health, CPU, RAM, disk, uptime |
+| `/log` | — | Recent KORVIN activity |
 | `/confirm <hash>` | — | Approve a pending HIGH-risk action |
 | `/cancel <hash>` | — | Cancel a pending HIGH-risk action |
 | `/pending` | — | List all active pending confirmations |
@@ -179,22 +126,22 @@ Korvin responds to these commands in Telegram:
 | `/grill` | — | Stress-test a claim or argument |
 | `Research <topic>` | — | Web research on any topic |
 
-> ⚠️ **Important:** `/scan` and `/patch` are intended for technical users only. `/patch` output is AI-generated and must be verified against official sources (NVD, vendor advisories) before acting on it. A clean `/scan` result means no engine flagged the target at scan time — it does not guarantee safety. Never act on either command's output without independent verification.
+> ⚠️ **Important:** `/scan` and `/patch` are intended for technical users only. `/patch` output is AI-generated and must be verified against official sources such as NVD or vendor advisories before acting on it. A clean `/scan` result means no engine flagged the target at scan time. It does not guarantee safety. Never act on either command's output without independent verification.
 
-**Why confirmation gates exist:**
-Every HIGH-risk command requires explicit `/confirm <hash>` before executing. This is an architectural constraint — not a prompt suggestion. The agent cannot bypass it. Pending actions expire after 5 minutes automatically.
+**Why confirmation gates exist:**  
+Every HIGH-risk command requires explicit `/confirm <hash>` before executing. This is an architectural constraint, not a prompt suggestion. The agent cannot bypass it. Pending actions expire after 5 minutes automatically.
 
 This design exists because autonomous agents without human checkpoints have caused irreversible data loss in documented production incidents. A confirmation gate is the difference between the agent tried and the agent did.
 
 **Example `/scan` flow:**
 
-```
+```text
 You:    /scan google.com
-Korvin: 🔐 Confirmation Required — Action: scan — Risk: HIGH
+KORVIN: 🔐 Confirmation Required — Action: scan — Risk: HIGH
         Reply /confirm a1b2c3d4 to execute
 
 You:    /confirm a1b2c3d4
-Korvin: 🔍 Scanning `google.com`... (url)
+KORVIN: 🔍 Scanning `google.com`... (url)
 
         🟢 VirusTotal — `google.com`
         Type: URL
@@ -205,9 +152,9 @@ Korvin: 🔍 Scanning `google.com`... (url)
         ✅ No threats detected.
 ```
 
-**VirusTotal:** Korvin checks what is already known across 90+ engines. It never submits anything on your behalf. A free API key is required — get one at [virustotal.com](https://virustotal.com) and add it to `/etc/korvin.env` as `VIRUSTOTAL_API_KEY`. The free tier allows 500 lookups per day.
+**VirusTotal:** KORVIN checks what is already known across 90+ engines. It never submits anything on your behalf. A free API key is required. Get one at [virustotal.com](https://virustotal.com) and add it to `/etc/korvin.env` as `VIRUSTOTAL_API_KEY`. The free tier allows 500 lookups per day.
 
-**Lynis:** `/scan system` reads a weekly security audit generated by a root cron job. The bot never runs Lynis directly — this preserves the privilege boundary. Install Lynis first:
+**Lynis:** `/scan system` reads a weekly security audit generated by a root cron job. The bot never runs Lynis directly. This preserves the privilege boundary. Install Lynis first:
 
 ```bash
 apt-get install lynis
@@ -215,6 +162,8 @@ apt-get install lynis
 # Add the weekly cron job
 echo "0 2 * * 0 root lynis audit system --quick > /home/korvin/korvin/data/lynis-report.txt 2>&1" > /etc/cron.d/lynis-audit
 ```
+
+> ⚠️ **Hardcoded path warning:** The path `/home/korvin/korvin/data/lynis-report.txt` is hardcoded in both the cron job above and in `src/commands/scan.js`. If you cloned KORVIN to a different location, you must update both the cron output path and the matching path in `scan.js`.
 
 ---
 
@@ -226,7 +175,7 @@ echo "0 2 * * 0 root lynis audit system --quick > /home/korvin/korvin/data/lynis
 npm install -g @nosistech/korvin
 ```
 
-> **Note:** This installs the Korvin JS SDK surface only -- not the full agent. The npm package does not include the Python dashboard, voice stack, LiteLLM proxy, or systemd services. To run the full agent, follow the Manual Install steps below. The `korvin init` setup wizard is on the roadmap and not yet available.
+> **Note:** This installs the KORVIN JS SDK surface only, not the full agent. The npm package does not include the Python dashboard, voice stack, LiteLLM proxy, or systemd services. To run the full agent, follow the Manual Install steps below. The `korvin init` setup wizard is on the roadmap and not yet available.
 
 **Manual Install (full control):**
 
@@ -234,9 +183,11 @@ npm install -g @nosistech/korvin
 # 1. Clone the repo
 git clone https://github.com/nosistech/korvin.git
 cd korvin
-# IMPORTANT: Several internal paths are hardcoded to /home/korvin/korvin
-# Clone into that exact path or update the paths in gateway.js, telegram-bot.js, and src/dashboard/main.py before running
+```
 
+> ⚠️ **IMPORTANT:** Several internal paths are hardcoded to `/home/korvin/korvin`. Clone into that exact path or update the paths in `gateway.js`, `telegram-bot.js`, and `src/dashboard/main.py` before running.
+
+```bash
 # 2. Install Node dependencies
 npm install
 
@@ -262,10 +213,11 @@ Edit `config.json`:
   "memory_strategy": "sliding_window",
   "summarizer_url": "http://localhost:4000/v1/chat/completions",
   "summarizer_model": "YOUR_MODEL_NAME",
-  "summarizer_fallback": "sliding_window", // planned -- not yet wired in code
   "litellm_master_key": "YOUR_LITELLM_MASTER_KEY"
 }
 ```
+
+> **Note:** The `summarizer_fallback` key from earlier config examples has been removed. It is planned but not yet wired in code. See the Memory Architecture section for current behavior.
 
 ```bash
 # 6. Start the bot
@@ -284,13 +236,12 @@ Run both the bot and dashboard as systemd services so they survive reboots.
 **Create a dedicated system user:**
 
 ```bash
-useradd --system --create-home --home-dir /home/korvin \
-  --shell /bin/bash --comment "KORVIN service account" korvin
+useradd --system --create-home --home-dir /home/korvin   --shell /bin/bash --comment "KORVIN service account" korvin
 
 chown -R korvin:korvin /path/to/korvin
 ```
 
-**Bot service** — `/etc/systemd/system/korvin.service`:
+**Bot service** - `/etc/systemd/system/korvin.service`:
 
 ```ini
 [Unit]
@@ -311,7 +262,7 @@ EnvironmentFile=/etc/korvin.env
 WantedBy=multi-user.target
 ```
 
-**Dashboard service** — `/etc/systemd/system/korvin-dashboard.service`:
+**Dashboard service** - `/etc/systemd/system/korvin-dashboard.service`:
 
 ```ini
 [Unit]
@@ -339,9 +290,9 @@ systemctl enable korvin korvin-dashboard
 systemctl start korvin korvin-dashboard
 ```
 
-**Environment file** — `/etc/korvin.env` (chmod 600, never committed to git):
+**Environment file** - `/etc/korvin.env` (chmod 600, never committed to git):
 
-```
+```text
 KORVIN_API_KEY=your_dashboard_api_key
 VIRUSTOTAL_API_KEY=your_virustotal_key
 LITELLM_MASTER_KEY=your_litellm_master_key
@@ -351,32 +302,33 @@ LITELLM_MASTER_KEY=your_litellm_master_key
 
 ## Dashboard Architecture
 
-Korvin runs two separate dashboard stacks:
+KORVIN runs two separate dashboard stacks:
 
-**Express dashboard (port 3000)** -- embedded inside the Telegram bot process. Starts automatically when the bot starts. Exposes a single internal endpoint (`GET /api/system`) that the `/status` command uses to read CPU, RAM, disk, and uptime. Never exposed externally. No auth required -- loopback only.
+**Express dashboard (port 3000)** - embedded inside the Telegram bot process. Starts automatically when the bot starts. Exposes a single internal endpoint (`GET /api/system`) that the `/status` command uses to read CPU, RAM, disk, and uptime. Never exposed externally. No auth required. Loopback only.
 
-**FastAPI dashboard (port 3002)** -- a separate Python process managed by `korvin-dashboard.service`. This is the full web UI at `dashboard.korvin.cloud` -- chat, memory browser, model switcher, logs, token usage, settings. Requires `X-Korvin-Key` on write endpoints. Exposed via Cloudflare Tunnel with Access OTP.
+**FastAPI dashboard (port 3002)** - a separate Python process managed by `korvin-dashboard.service`. This is the full web UI used in the current production setup, including chat, memory browser, model switcher, logs, token usage, and settings. Requires `X-Korvin-Key` on write endpoints. Exposed via Cloudflare Tunnel with Access OTP.
 
 The two stacks are independent. The bot runs without the FastAPI dashboard. The FastAPI dashboard runs without the bot. Port 3000 is internal only. Port 3002 is the one you expose through Cloudflare.
 
 ---
 
-## Exposing the Dashboard
+## Accessing the Dashboard
 
-The dashboard runs on `127.0.0.1:3002` — loopback only, never exposed directly. Use Cloudflare Tunnel to reach it from anywhere:
+The dashboard runs on `127.0.0.1:3002`, loopback only, never exposed directly to the internet. This is intentional.
 
-```bash
-cloudflared tunnel create korvin-dashboard
-cloudflared tunnel route dns korvin-dashboard dashboard.yourdomain.com
-```
+**Local access only (default):** If KORVIN runs on your local machine, you can reach the dashboard directly in your browser at `http://127.0.0.1:3002`. No extra setup needed. This is the safest option.
 
-Then add Cloudflare Access (zero-trust OTP or SSO) so only you can reach it. This gives you two layers: Cloudflare Access at the edge, API key auth on write endpoints inside the app.
+**Remote access:** If KORVIN runs on a VPS and you want to reach the dashboard from anywhere, the recommended approach is a Cloudflare Tunnel. This creates an encrypted connection between your server and the internet without opening ports on your firewall or exposing the dashboard directly.
+
+You can add Cloudflare Access on top. This gives you a simple login step so only you can reach your dashboard.
+
+> Full deployment and protected remote access documentation will be added in post-install docs.
 
 ---
 
 ## LiteLLM Setup
 
-Korvin routes all LLM calls through [LiteLLM](https://github.com/BerriAI/litellm) — a proxy that makes every model provider look identical to the agent.
+KORVIN routes all LLM calls through [LiteLLM](https://github.com/BerriAI/litellm), a proxy that makes every model provider look identical to the agent.
 
 ```bash
 pip install litellm
@@ -397,7 +349,7 @@ general_settings:
   drop_params: true
 ```
 
-**LiteLLM service** — `/etc/systemd/system/litellm.service`:
+**LiteLLM service** - `/etc/systemd/system/litellm.service`:
 
 ```ini
 [Unit]
@@ -426,38 +378,40 @@ Always bind LiteLLM to `127.0.0.1`. Verify:
 
 ```bash
 ss -tlnp | grep 4000
-# Expected: 127.0.0.1:4000 — never 0.0.0.0
+# Expected: 127.0.0.1:4000 -- never 0.0.0.0
 ```
+
+> **Note:** LiteLLM currently runs as root because it requires access to `/root/litellm_config.yaml`. A dedicated service user is planned for a future release.
 
 ---
 
 ## Model Switcher
 
-The dashboard Settings tab lets you swap the active AI model with one tap — no restart, no config file edits.
+The dashboard Settings tab lets you swap the active AI model with one tap, no restart and no config file edits.
 
 How it works:
 
-```
-Dashboard Settings → select model → writes active_model.txt
-Gateway (gateway.js) → reads file on every message → sends model name to LiteLLM
-LiteLLM → routes to the correct provider
+```text
+Dashboard Settings -> select model -> writes active_model.txt
+Gateway (gateway.js) -> reads file on every message -> sends model name to LiteLLM
+LiteLLM -> routes to the correct provider
 ```
 
 The switch is instant. The gateway picks it up on the next message.
 
-To add a new model: add it to `MODEL_LABELS` and `MODEL_WHITELIST` in `src/dashboard/main.py`, add it to `litellm_config.yaml` with its API key, and the dashboard builds the buttons automatically.
+To add a new model, add it to `MODEL_LABELS` and `MODEL_WHITELIST` in `src/dashboard/main.py`, add it to `litellm_config.yaml` with its API key, and the dashboard builds the buttons automatically.
 
 ---
 
 ## Memory Architecture
 
-Korvin stores every conversation in a local SQLite database and manages growth automatically.
+KORVIN stores every conversation in a local SQLite database and manages growth automatically.
 
-**Sliding window (default)** — oldest messages drop off as new ones arrive. The agent never stops. Choose this when you want zero interruptions.
+**Sliding window (default)** - oldest messages drop off as new ones arrive. The agent never stops. Choose this when you want zero interruptions.
 
-**Summarize** — when messages hit the limit, Korvin summarizes the oldest half using your configured LLM, stores it as a single entry, and deletes the originals. You keep the meaning without keeping every word. If summarization fails, it falls back to sliding window automatically.
+**Summarize** - when messages hit the limit, KORVIN summarizes the oldest half using your configured LLM, stores it as a single entry, and deletes the originals. You keep the meaning without keeping every word. If summarization fails, it falls back to sliding window automatically.
 
-**Hard stop** — new messages are rejected when the limit is hit until you manually clear memory. Choose this only if you want full manual control and can tolerate the agent going silent.
+**Hard stop** - new messages are rejected when the limit is hit until you manually clear memory. Choose this only if you want full manual control and can tolerate the agent going silent.
 
 Configure in `config.json`:
 
@@ -527,36 +481,28 @@ All endpoints on `http://127.0.0.1:3002`.
 curl http://127.0.0.1:3002/api/system
 
 # Switch model
-curl -X POST http://127.0.0.1:3002/api/switch-model \
-  -H "Content-Type: application/json" \
-  -H "X-Korvin-Key: YOUR_API_KEY" \
-  -d '{"model": "deepseek-v4-pro"}'
+curl -X POST http://127.0.0.1:3002/api/switch-model   -H "Content-Type: application/json"   -H "X-Korvin-Key: YOUR_API_KEY"   -d '{"model": "deepseek-v4-pro"}'
 
 # Toggle killswitch
-curl -X POST http://127.0.0.1:3002/api/killswitch \
-  -H "Content-Type: application/json" \
-  -H "X-Korvin-Key: YOUR_API_KEY" \
-  -d '{"enabled": true}'
+curl -X POST http://127.0.0.1:3002/api/killswitch   -H "Content-Type: application/json"   -H "X-Korvin-Key: YOUR_API_KEY"   -d '{"enabled": true}'
 ```
 
 ---
 
 ## Security Design
 
-**Threat model:**
+**Threat model:**  
+KORVIN is designed for single-operator self-hosted deployment. Primary threats and mitigations:
 
-Korvin is designed for single-operator self-hosted deployment. Primary threats and mitigations:
+- Unauthorized dashboard access - Cloudflare Access OTP plus API key on write endpoints
+- Services exposed on public IP - all services bound to `127.0.0.1` only
+- Secret leakage - `/etc/korvin.env` chmod 600, never committed; `config.json` gitignored
+- Log data exposure - server-side sanitization strips stack traces and file paths
+- Prompt injection - `sanitizer.js` blocks malicious patterns before reaching the LLM
+- Destructive autonomous actions - confirmation gate requires explicit `/confirm` for all HIGH-risk commands
 
-- Unauthorized dashboard access — Cloudflare Access OTP + API key on write endpoints
-- Services exposed on public IP — all services bound to `127.0.0.1` only
-- Secret leakage — `/etc/korvin.env` chmod 600, never committed; `config.json` gitignored
-- Log data exposure — server-side sanitization strips stack traces and file paths
-- Prompt injection — `sanitizer.js` blocks malicious patterns before reaching the LLM
-- Destructive autonomous actions — confirmation gate requires explicit `/confirm` for all HIGH-risk commands
-
-**Privilege separation:**
-
-The bot and dashboard both run as the `korvin` system user — not root. LiteLLM runs as root because it requires access to `/root/litellm_config.yaml`. Future versions will address this.
+**Privilege separation:**  
+The bot and dashboard both run as the `korvin` system user, not root. LiteLLM runs as root because it requires access to `/root/litellm_config.yaml`. Future versions will address this.
 
 **Port security checklist:**
 
@@ -567,28 +513,28 @@ ss -tlnp | grep -E "3000|3002|4000"
 
 **Never committed to git:**
 
-```
+```text
 config.json        # Telegram token, LiteLLM master key
 data/              # SQLite memory database
 logs/              # Runtime logs
 *.wav / *.ogg      # Voice recordings
 /etc/korvin.env    # All API keys
-KORVIN.local.md    # Your personal agent config (identity, tone, rules)
+KORVIN.local.md    # Your personal agent config
 ```
 
 ---
 
 ## Project Structure
 
-```
+```text
 korvin/
 ├── src/
 │   ├── openclaw/
 │   │   ├── gateway.js              # LLM gateway, model switching
 │   │   └── telegram-bot.js         # Telegram integration, voice, command routing
 │   ├── commands/
-│   │   ├── scan.js                 # /scan — VirusTotal + Lynis
-│   │   └── patch.js                # /patch — LLM CVE research (verify against official sources)
+│   │   ├── scan.js                 # /scan - VirusTotal + Lynis
+│   │   └── patch.js                # /patch - LLM CVE research (verify against official sources)
 │   ├── middleware/
 │   │   ├── confirmation-gate.js    # /confirm guard for HIGH-risk actions
 │   │   ├── sanitizer.js            # Prompt injection blocker
@@ -617,11 +563,11 @@ korvin/
 
 ## Roadmap
 
-- [ ] `korvin init` setup wizard via npm
-- [ ] WhatsApp, Discord, Signal channels
-- [ ] RAG over local documents
-- [ ] Multi-agent orchestration
-- [ ] Wake word detection via Porcupine
+- [ ] `korvin init` setup wizard via npm `[planned]`
+- [ ] WhatsApp, Discord, Signal channels `[planned]`
+- [ ] RAG over local documents `[planned]`
+- [ ] Multi-agent orchestration `[planned]`
+- [ ] Wake-word support `[planned - experimental]`
 
 ---
 
@@ -639,10 +585,10 @@ See `SECURITY.md` for responsible disclosure policy.
 
 ## License
 
-MIT — see `LICENSE.md` for full details.
+MIT - see `LICENSE.md` for full details.
 
-MIT License — free for personal, educational, and commercial use. Copies of this software must include the copyright notice and license text. KORVIN is provided as-is with no warranty. See `LICENSE.md` for full terms and third-party attributions.
+MIT License - free for personal, educational, and commercial use. Copies of this software must include the copyright notice and license text. KORVIN is provided as-is with no warranty. See `LICENSE.md` for full terms and third-party attributions.
 
 ---
 
-*Built by NosisTech — Cloud  · AI *
+*Built by NosisTech*
