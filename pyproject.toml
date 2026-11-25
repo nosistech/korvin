@@ -1,0 +1,22 @@
+[build-system]
+requires = ["flit_core>=3.12,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "korvin"
+dynamic = ["version"]
+description = "A small, private AI assistant for the terminal, built for one small local model."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "NosisTech" }]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/nosistech/korvin"
+Repository = "https://github.com/nosistech/korvin"
+Issues = "https://github.com/nosistech/korvin/issues"
+
+[project.scripts]
+korvin = "korvin.__main__:main"

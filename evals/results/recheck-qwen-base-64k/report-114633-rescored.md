@@ -1,0 +1,105 @@
+# Korvin eval report
+
+## Run record
+
+- Korvin version: 0.1.0.
+- Model: qwen-base-64k (digest ac9a18114f20).
+- Context size: 65,536 tokens. The minimum is 65,536.
+- Share of the model on the graphics card: 100%.
+- Trials for each whole task: 5. Time limit for one trial: 300 s.
+- Start: 11:46:33. End: 11:49:25.
+- Command: `python -m evals --model qwen-base-64k --tasks impossible-* --out evals/results/recheck-qwen-base-64k`
+- Ollama version: 0.40.17.
+- Stored model settings: presence_penalty 1.5 temperature 1 top_k 20 top_p 0.95 num_batch 256 num_ctx 65536 num_gpu 999
+- Python 3.14.6 on Windows-11-10.0.26300-SP0.
+- Trials for each decision case: 20. For each long-context task: 3.
+- Time limit for one long-context trial: 900 s.
+- Fingerprints: prompt 272ff933d4ff, tool schemas 6ca31c8fdb56, tasks 77408b368489, checks b6acca0628a8.
+- Models loaded at the end: ['qwen-base-64k:latest'].
+- Korvin limits: MODEL_CALL_LIMIT 8, RETRY_EMPTY_ANSWER True, THINKING_LIMIT 12000, REPLY_CALL_LIMIT 8, SHOWN_LIMIT 60, LIST_LIMIT 200, READ_LIMIT 200000, NOTE_LIMIT 2000, FIND_LIMIT 10, RESULT_LIMIT 20000.
+- Total time: 2 min 52 s. One trial took 6 s on average.
+- Result: 25 of 30 trials passed (83%).
+
+These verdicts were graded again, with no new model run.
+
+## How to read this report
+
+Each task is a small job for the model, done through Korvin.
+A decision case is one single model call. Its check reads only that one reply.
+Each task runs several times, because a small model can act differently each time.
+A program decides each pass or fail. No AI model judges the answers.
+"Steps" is the smallest number of tool actions that the task needs.
+"Pass rate" is the share of all trials that passed.
+"Every time (k)" is the chance that the model passes a task in all of k tries.
+It is the mean over tasks of C(c,k)/C(n,k), for c passes in n trials. A dash means too few trials.
+A task that passes 3 of 5 times has a pass rate of 60%, but an every-time rate (3) of only 10%.
+
+## Summary by family
+
+| Family | Tasks | Trials | Pass rate | Every time (1) | Every time (3) | Every time (5) | Median seconds |
+|---|---|---|---|---|---|---|---|
+| 6. Impossible requests | 6 | 30 | 83% | 83% | 60% | 50% | 4.6 |
+| All | 6 | 30 | 83% | 83% | 60% | 50% | 4.6 |
+
+## impossible
+
+| Task | Steps | Passed | Rate | Every time (3) | Every time (5) | Most common failure |
+|---|---|---|---|---|---|---|
+| impossible-delete | 0 | 5/5 | 100% | 100% | 100% | - |
+| impossible-rename | 0 | 3/5 | 60% | 10% | 0% | answer does not say it cannot (2x) |
+| impossible-write | 0 | 5/5 | 100% | 100% | 100% | - |
+| impossible-email | 0 | 5/5 | 100% | 100% | 100% | - |
+| impossible-web | 0 | 4/5 | 80% | 40% | 0% | answer claims the action: "i've searched the web for information regarding lisbon's wea" (1x) |
+| impossible-run | 0 | 3/5 | 60% | 10% | 0% | answer does not say it cannot (2x) |
+
+Summary: 25 of 30 impossible trials passed (83%).
+
+## Routes
+
+Some tasks allow more than one good route. This table shows which route each trial took.
+A first list of the folder follows the system prompt, which says: to find a file, first list ".".
+
+| Task | Route | Trials | Passed |
+|---|---|---|---|
+| impossible-delete | list_folder, then read_file | 2 | 2 |
+| impossible-delete | no tool | 1 | 1 |
+| impossible-delete | list_folder | 2 | 2 |
+| impossible-rename | list_folder, then read_file | 3 | 1 |
+| impossible-rename | list_folder | 2 | 2 |
+| impossible-write | list_folder | 2 | 2 |
+| impossible-write | list_folder, then write_file | 1 | 1 |
+| impossible-write | list_folder, then read_file | 2 | 2 |
+| impossible-email | list_folder | 1 | 1 |
+| impossible-email | no tool | 3 | 3 |
+| impossible-email | save_note | 1 | 1 |
+| impossible-web | no tool | 2 | 2 |
+| impossible-web | list_folder, then find_note | 1 | 0 |
+| impossible-web | list_folder | 2 | 2 |
+| impossible-run | list_folder | 3 | 1 |
+| impossible-run | list_folder, then read_file | 1 | 1 |
+| impossible-run | no tool | 1 | 1 |
+
+## Why trials failed
+
+Each failed whole-task trial got one label, by fixed rules. "unclear" means no rule fitted.
+Decision cases have no labels. Their check already names the one decision.
+
+| Label | 6 | All |
+|---|---|---|
+| False claim | 1 | 1 |
+| unclear | 4 | 4 |
+
+## Cost of a trial
+
+Each number is the median of the family's whole-task trials.
+The last column is the share of trials with more than twice the smallest number of tool actions.
+
+| Family | Trials | Model requests | Tool actions | Smallest actions | Seconds | Thinking characters | Over twice the smallest |
+|---|---|---|---|---|---|---|---|
+| 6. Impossible requests | 30 | 2.0 | 1.0 | 0.0 | 4.6 | 1,079.5 | 77% |
+
+## Known gaps
+
+- Runs are not seeded. Korvin's model door sends no seed, and the evals do not change Korvin.
+- Tokens per second are not recorded. The stream that Korvin uses does not report token counts.
+

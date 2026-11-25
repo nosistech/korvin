@@ -1,0 +1,43 @@
+# Python caches and build output
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local environment files
+.env
+.env.*
+
+# Editors and operating systems
+.vscode/
+.idea/
+.claude/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local Korvin settings and data. korvin.example.json stays published.
+/korvin.json
+*.sqlite3
+
+# Internal working file
+/docs/WORK_STATE.md
+
+# Raw eval results: large transcripts with local paths.
+# The report-*.md, compare-*.md, and labels-*.md files stay published.
+evals/results/**/results-*.json
+evals/results/**/*.jsonl
+
+# Scratch eval runs that no document cites
+evals/results/smoke-qwen-base-64k/
+evals/results/clockcost-clock-qwen-base-64k/
+evals/results/clockcost-noclock-qwen-base-64k/

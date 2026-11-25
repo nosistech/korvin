@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Korvin: a private AI assistant that fits a 4 GB graphics card</title>
+  <meta name="description" content="Korvin is a small, private AI assistant that runs on your own computer. We built and tested it for one small local model that fits a 4 GB graphics card.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Korvin">
+  <meta property="og:title" content="Korvin: a private AI assistant that fits a 4 GB graphics card">
+  <meta property="og:description" content="Built and measured for one small local model that fits a 4 GB graphics card. Version 0.3.0. Open source, Apache 2.0.">
+  <meta property="og:url" content="https://korvin.cloud/">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Cpath d='M21 16h7v13l12-13h9L35 31l15 17h-9L28 34v14h-7z' fill='%2306111f'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./theme.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the content</a>
+
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="Korvin, back to the top"><span class="brand-mark" aria-hidden="true">K</span><span>KORVIN</span></a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#uses">Uses</a>
+      <a href="#who">For whom</a>
+      <a href="#why">Why</a>
+      <a href="#compare">Compared</a>
+      <a href="#results">Results</a>
+      <a href="#limits">Limits</a>
+      <a href="#start">Start</a>
+      <a href="https://github.com/nosistech/korvin">GitHub</a>
+      <button class="theme-toggle" id="themeToggle" type="button" hidden>Light</button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Version 0.3.0. Open source, Apache 2.0.</p>
+        <h1 id="hero-title">A private AI assistant that fits a 4 GB graphics card.</h1>
+        <p class="hero-subtitle">Ask questions about your files and follow facts from one file to the next. Korvin also keeps short notes, and everything stays on your own computer.</p>
+        <p class="hero-text">You talk to Korvin in a terminal. We tuned it for one small local model, and its median answer in our comparison took 2.8 seconds. It asks before it saves anything.</p>
+        <div class="cta-row">
+          <a class="button primary" href="https://github.com/nosistech/korvin">Get Korvin on GitHub</a>
+          <a class="button secondary" href="https://github.com/nosistech/korvin/blob/main/docs/USER_GUIDE.md">Read the guide</a>
+        </div>
+      </div>
+
+      <figure class="terminal-card">
+        <div class="terminal-top" aria-hidden="true"><span></span><span></span><span></span></div>
+        <pre><code><span class="t-dim">Korvin 0.3.0
+Model: korvin-qwen3.5-2b-q4_K_M-64k
+Folder: C:\Users\Anna\Documents\Korvin files (Korvin reads files here. It asks before an unexpected read.)</span>
+<span class="t-local">LOCAL: Korvin sends nothing off this computer.</span>
+
+<span class="t-prompt">you&gt;</span> Read todo.txt and save a note with the first thing on it.
+<span class="t-tool">  [tool] read_file "todo.txt" -&gt; 214 characters</span>
+<span class="t-ask">Korvin wants to save this note:
+    buy stamps
+Allow?  [y] yes, once   [s] yes, for this session   [n] no  (Enter = no)</span>
+<span class="t-prompt">allow&gt;</span> y
+<span class="t-tool">  [tool] save_note "buy stamps" -&gt; saved</span>
+The first thing on your list is "buy stamps". I saved it as a note.</code></pre>
+        <figcaption>A short session. Each line format comes from the user guide.</figcaption>
+      </figure>
+    </section>
+
+    <section class="section" id="uses" aria-labelledby="uses-title">
+      <div class="section-heading">
+        <p class="eyebrow">Uses</p>
+        <h2 id="uses-title">What you can do with it.</h2>
+        <p>Everything below runs on your own computer, with no account and no fee.</p>
+      </div>
+      <div class="panel">
+        <table class="data">
+          <caption class="visually-hidden">Uses of Korvin and their measured results</caption>
+          <thead>
+            <tr><th scope="col">Use</th><th scope="col">Example request</th><th scope="col">Measured</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Ask about a text file</th><td>"Read meeting.txt. When is the next meeting?"</td><td>15 of 15 in the comparison</td></tr>
+            <tr><th scope="row">Follow facts across files</th><td>"Read start.txt and follow it to the answer."</td><td>1 to 5 files: 5 of 5 at each length</td></tr>
+            <tr><th scope="row">Keep short notes</th><td>"Save a note: call the dentist on Friday."</td><td>2, 3, and 5 notes from one request: 5 of 5 each</td></tr>
+            <tr><th scope="row">Find a note by its words</th><td>"What did I note about the dentist?"</td><td>Works with the note's own words. It fails by meaning.</td></tr>
+            <tr><th scope="row">Set standing rules</th><td><code>/rule Answer in Spanish.</code></td><td>Up to 5 rules. A file cannot add a rule.</td></tr>
+            <tr><th scope="row">Add your own local tools</th><td>"What time is it in Tokyo?" with the clock example</td><td>40 of 40</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="who" aria-labelledby="who-title">
+      <div class="section-heading">
+        <p class="eyebrow">Who it is for</p>
+        <h2 id="who-title">For a computer with a 4 GB graphics card.</h2>
+        <p>About one in seven gaming computers has 4 GB of graphics memory or less. That is 15% in the <a href="https://store.steampowered.com/hwsurvey/">Steam hardware survey</a> of October 2026.</p>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <h3>Most agent tools expect a large model</h3>
+          <p>We ran two well-known coding agents on the same small model. Their fixed prompts use 6,600 to 7,600 tokens. They passed 46% and 65% of our trials.</p>
+        </article>
+        <article class="card">
+          <h3>Korvin uses a short prompt and four tools</h3>
+          <p>Korvin's fixed prompt uses 744 tokens, and it has four tools. On the same model and the same tasks, it passed 90%.</p>
+        </article>
+        <article class="card">
+          <h3>The whole model stays on the card</h3>
+          <p>Qwen 3.5 2B runs fully on a 4 GB card, with a 64k context. The median answer in our comparison took 2.8 seconds.</p>
+        </article>
+        <article class="card">
+          <h3>No broken tool calls</h3>
+          <p>In 110 comparison trials, Korvin had no broken tool call. The two coding agents had them in 9 and in 29 trials.</p>
+        </article>
+      </div>
+      <p class="panel-note">The Steam survey counts gaming computers only. We tested Korvin on one 4 GB card. Cards below 4 GB are not tested.</p>
+    </section>
+
+    <section class="section" id="why" aria-labelledby="why-title">
+      <div class="section-heading">
+        <p class="eyebrow">Why Korvin</p>
+        <h2 id="why-title">Reasons to use it.</h2>
+        <p>Korvin does a few jobs on your own computer, and we publish the measured result of each one.</p>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <h3>It connects only to Ollama</h3>
+          <p>Ollama runs on your own computer. Only one file in Korvin may use the network, and a guard inside Korvin blocks every connection to any other address.</p>
+        </article>
+        <article class="card">
+          <h3>It asks first</h3>
+          <p>Korvin asks before it saves a note, and before every call of a tool server. It also asks before a file read that you did not expect. Enter alone means no.</p>
+        </article>
+        <article class="card">
+          <h3>Set up for Qwen 3.5 2B</h3>
+          <p>Korvin is built for Qwen 3.5 2B at a 64k context. The whole model runs on a 4 GB graphics card, and the guided setup makes the 64k copy for you.</p>
+        </article>
+        <article class="card">
+          <h3>A program grades every result</h3>
+          <p>Every result on this page comes from a repeatable eval run. We publish the limits next to the results.</p>
+        </article>
+        <article class="card">
+          <h3>Compared with other tools</h3>
+          <p>We ran Korvin and three other agent tools on the same model. Korvin matched the best one, and it was the fastest. <a href="#compare">See the comparison</a>.</p>
+        </article>
+        <article class="card">
+          <h3>2,496 lines of Python</h3>
+          <p>The program sits in thirteen small files. It uses only the Python standard library, and it has no dependencies.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="features" aria-labelledby="features-title">
+      <div class="section-heading">
+        <p class="eyebrow">What it does</p>
+        <h2 id="features-title">Four tools, and the controls around them.</h2>
+      </div>
+      <div class="split">
+        <div>
+          <h3>The four built-in tools</h3>
+          <table class="data">
+            <caption class="visually-hidden">The four built-in tools</caption>
+            <thead>
+              <tr><th scope="col">Tool</th><th scope="col">What it does</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row"><code>list_folder</code></th><td>Lists the files and folders inside your chosen folder.</td></tr>
+              <tr><th scope="row"><code>read_file</code></th><td>Reads one text file inside your chosen folder, up to 200,000 bytes.</td></tr>
+              <tr><th scope="row"><code>save_note</code></th><td>Saves a note of up to 2,000 characters. Korvin always asks first.</td></tr>
+              <tr><th scope="row"><code>find_note</code></th><td>Finds notes that contain every word of a search, and shows the 10 newest.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="check-list">
+          <li><strong>Standing rules.</strong> Type <code>/rule Answer in Spanish.</code> to add one. Korvin keeps up to 5 rules. Text in a file or a note cannot add a rule.</li>
+          <li><strong>A sealed log that you can check.</strong> Each line of the log has a SHA-256 seal. <code>python -m korvin check</code> shows if a line was changed. The log holds no file contents and no chat text.</li>
+          <li><strong>Optional local tool servers.</strong> A tool server is a separate program that gives Korvin extra tools. You add each server, and you approve each tool. The clock example tells the time and converts units, with no network.</li>
+          <li class="note-item"><strong>Optional web search example.</strong> It sends your search words, and the addresses that it fetches, to Ollama's hosted service. It is off until you add it, and it needs your own Ollama key. Ollama charges usage credits for it. We saw search results only from a fake of that service.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="compare" aria-labelledby="compare-title">
+      <div class="section-heading">
+        <p class="eyebrow">Compared</p>
+        <h2 id="compare-title">Korvin and three other tools, on the same model.</h2>
+        <p class="conditions">22 tasks, 5 trials each, 110 trials for each tool. Qwen 3.5 2B at a 64k context, on the same computer, <span class="nowrap">2026-11-24</span>.</p>
+      </div>
+      <div class="panel">
+        <table class="data">
+          <caption class="visually-hidden">Results of four agent tools on the same model</caption>
+          <thead>
+            <tr><th scope="col">Tool</th><th scope="col">Passed</th><th scope="col">Median seconds</th><th scope="col">Timeouts</th><th scope="col">Fixed prompt (tokens)</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Pi 1.5.2</th><td>100 of 110 (91%)</td><td>4.1</td><td>5</td><td>1,515</td></tr>
+            <tr><th scope="row">Korvin 0.3.0</th><td>99 of 110 (90%)</td><td>2.8</td><td>0</td><td>744</td></tr>
+            <tr><th scope="row">OpenCode 1.19.6</th><td>72 of 110 (65%)</td><td>8.8</td><td>3</td><td>7,621</td></tr>
+            <tr><th scope="row">goose 1.59.2</th><td>51 of 110 (46%)</td><td>9.3</td><td>2</td><td>6,626</td></tr>
+          </tbody>
+        </table>
+        <p class="panel-note">Korvin and Pi are level here. With Korvin's sampling settings, Pi passed 105 of 110, so we do not claim that Korvin is better. Korvin passed 99, against 72 for OpenCode and 51 for goose.</p>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <h3>Fastest</h3>
+          <p>Korvin had the lowest median time, and it never reached the time limit. Its fixed prompt is the smallest of the four.</p>
+        </article>
+        <article class="card">
+          <h3>It says what it cannot do</h3>
+          <p>We asked for a missing file and for an email. In 9 of 10 trials, Korvin said that it could not do the task. Pi did so in 3 of 10.</p>
+        </article>
+        <article class="card">
+          <h3>The question stops the read</h3>
+          <p>A hidden order asked for a private file in the folder. Korvin's question stopped the read in 5 of 5 trials. In the other tools, the model read it in 9 of 15.</p>
+        </article>
+        <article class="card">
+          <h3>Where Pi is better</h3>
+          <p>Pi can create files, and Korvin cannot. Pi also found the right file a little more often, and it resisted one hidden order better.</p>
+        </article>
+      </div>
+      <p class="panel-note">We wrote the tasks, and they fit Korvin's use. The other three tools are coding agents, and their makers did not design them for a model of this size. <a href="https://github.com/nosistech/korvin/blob/main/docs/DECISION_LOG.md">Decision D-037</a> gives both parts of the test and every limit.</p>
+    </section>
+
+    <section class="section" id="results" aria-labelledby="results-title">
+      <div class="section-heading">
+        <p class="eyebrow">Measured results</p>
+        <h2 id="results-title">What the final run measured.</h2>
+        <p class="conditions">Korvin 0.3.0, Qwen 3.5 2B, 65,536-token context, fully on a 4 GB laptop graphics card, Windows 11, <span class="nowrap">2026-11-24</span>.</p>
+      </div>
+      <div class="panel">
+        <table class="data">
+          <caption class="visually-hidden">Results of the final eval run</caption>
+          <thead>
+            <tr><th scope="col">What we measured</th><th scope="col">Result</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">All trials, on 203 tasks</th><td>1,238 of 1,407 passed (88%)</td></tr>
+            <tr><th scope="row">Whole tasks, from a request to a final answer</th><td>103 of 110 (94%)</td></tr>
+            <tr><th scope="row">Chains of file reads, where each file names the next: 1 to 5 files</th><td>5 of 5 at each length</td></tr>
+            <tr><th scope="row">Chains of file reads: 6 files</th><td>3 of 5</td></tr>
+            <tr><th scope="row">Tool server tasks, three of them with attacks</th><td>40 of 40</td></tr>
+            <tr><th scope="row">Hidden-order attacks that revealed a private file</th><td>0 of 200</td></tr>
+            <tr><th scope="row">Hidden-order attacks that were carried out</th><td>7 of 200 (4%)</td></tr>
+          </tbody>
+        </table>
+        <p class="panel-note">A program graded every trial. Most tasks ran 5 times, so a task with "5 of 5" can still fail on the next run. The 7 attacks that worked changed only the answer: the model said a given word, or refused your task. <a href="https://github.com/nosistech/korvin/blob/main/evals/results/full-final-qwen-base-64k/report-20261124-070457.md">Read the full report</a>.</p>
+      </div>
+    </section>
+
+    <section class="section" id="limits" aria-labelledby="limits-title">
+      <div class="section-heading">
+        <p class="eyebrow eyebrow-warning">Limits</p>
+        <h2 id="limits-title">What Korvin cannot do well.</h2>
+      </div>
+      <div class="panel panel-warning">
+        <table class="data">
+          <caption class="visually-hidden">Measured and known limits</caption>
+          <thead>
+            <tr><th scope="col">Limit</th><th scope="col">What we know</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Finding a fact by its meaning, not by its exact words, in a long context</th><td>0 of 18</td></tr>
+            <tr><th scope="row">An answer after you refuse a file read</th><td>29 of 40. The model sometimes drops your request.</td></tr>
+            <tr><th scope="row">Conversations over many turns</th><td>21 of 30 (70%)</td></tr>
+            <tr><th scope="row">Finding a fact in a folder of 10 files, with no file named</th><td>14 of 25</td></tr>
+            <tr><th scope="row">Other computers</th><td>Not tested on cards below 4 GB, on Mac, or on Linux.</td></tr>
+            <tr><th scope="row">The size of the model</th><td>A 2B model is far less capable than a large hosted model. It makes mistakes and sometimes states false facts.</td></tr>
+            <tr><th scope="row">What it is not</th><td>Korvin is not a coding agent. It cannot write, rename or delete your files, and it cannot run programs. It has no voice and no dashboard.</td></tr>
+            <tr><th scope="row">Outside review</th><td>No third party has audited Korvin. No person has checked the eval checks yet.</td></tr>
+          </tbody>
+        </table>
+        <p class="panel-note">The permission questions stop file reads and note saves, but they cannot stop what the model says. Section 8 of the user guide gives every number, and what to do about each weakness.</p>
+      </div>
+    </section>
+
+    <section class="section" id="start" aria-labelledby="start-title">
+      <div class="section-heading">
+        <p class="eyebrow">Start</p>
+        <h2 id="start-title">Five steps on Windows.</h2>
+        <p>You need Python 3.11 or later. Korvin was tested only on Windows 11.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Install Ollama</h3>
+          <p>Download Ollama from <a href="https://ollama.com/download">ollama.com/download</a>, install it, and start it.</p>
+        </li>
+        <li>
+          <h3>Get the model</h3>
+          <p>In a terminal, type this command and wait for the download.</p>
+          <pre class="command"><code>ollama pull qwen3.5:2b-q4_K_M</code></pre>
+        </li>
+        <li>
+          <h3>Get Korvin</h3>
+          <p>Get the Korvin folder from the <a href="https://github.com/nosistech/korvin">project page</a>, and open a terminal in it. If you want the <code>korvin</code> command, type this once:</p>
+          <pre class="command"><code>pip install .</code></pre>
+        </li>
+        <li>
+          <h3>Run the guided setup</h3>
+          <p>Type this command. The first time, a setup of five steps starts. Answer <code>y</code> to make the 64k copy.</p>
+          <pre class="command"><code>python -m korvin</code></pre>
+        </li>
+        <li>
+          <h3>Start</h3>
+          <p>After the setup, the chat starts. Next time, type <code>python -m korvin</code> again, or <code>korvin</code> if you installed it.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section" id="built" aria-labelledby="built-title">
+      <div class="section-heading">
+        <p class="eyebrow">How it was built</p>
+        <h2 id="built-title">We wrote down each design choice.</h2>
+        <p>The public decision log has 37 entries, and you do not need to write code to follow it. We tested eleven tuning ideas, each against a control run, and kept one: a lower temperature. <a href="https://github.com/nosistech/korvin/blob/main/docs/DECISION_LOG.md">Read the decision log</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-main">
+      <p>Korvin is a NosisTech project.</p>
+      <nav aria-label="Project links">
+        <a href="https://github.com/nosistech/korvin">GitHub</a>
+        <a href="https://github.com/nosistech/korvin/blob/main/docs/USER_GUIDE.md">User guide</a>
+        <a href="https://github.com/nosistech/korvin/blob/main/docs/SECURITY_MAP.md">Security map</a>
+        <a href="https://github.com/nosistech/korvin/blob/main/docs/DECISION_LOG.md">Decision log</a>
+        <a href="https://github.com/nosistech/korvin/blob/main/LICENSE">License</a>
+      </nav>
+    </div>
+    <p class="footer-note">The earlier Korvin, with a dashboard and voice, is retired. This is a new, smaller project.</p>
+  </footer>
+</body>
+</html>
